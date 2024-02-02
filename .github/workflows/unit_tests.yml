@@ -96,7 +96,11 @@ jobs:
           cd install/usr
           export PREFIX=$PWD
           export LD_LIBRARY_PATH=$PREFIX/lib
+          nohup ./bin/rbus_event_server alpha
+          nohup ./bin/rbus_session_mgr
           nohup ./bin/rbus_gtest.bin
+      - name: Stop Session Manager
+            killall -9 rbus_session_mgr
       - name: Stop rtrouted
         run: |
           killall -9 rtrouted
