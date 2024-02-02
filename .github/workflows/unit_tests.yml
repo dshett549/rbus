@@ -91,6 +91,12 @@ jobs:
           export LD_LIBRARY_PATH=$PREFIX/lib
           nohup ./bin/multiRbusOpenRbusGetProvider >/tmp/log_multiRbusOpenRbusSetProvider.txt &
           ./bin/multiRbusOpenRbusSetConsumer
+        name: Run Gtest cases
+        run: |
+          cd install/usr
+          export PREFIX=$PWD
+          export LD_LIBRARY_PATH=$PREFIX/lib
+          nohup ./bin/rbus_gtest.bin
       - name: Stop rtrouted
         run: |
           killall -9 rtrouted
