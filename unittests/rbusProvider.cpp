@@ -29,6 +29,7 @@
 #define __STDC_FORMAT_MACROS 1
 #include <inttypes.h>
 
+int subscribed = 0;
 void getCompileTime(struct tm *t);
 
 typedef struct MethodData
@@ -345,6 +346,27 @@ static rbusError_t methodHandler(rbusHandle_t handle, char const* methodName, rb
   return rc;
 }
 
+rbusError_t eventSubHandler1(rbusHandle_t handle, rbusEventSubAction_t action, const char* eventName, rbusFilter_t filter, int32_t interval, bool* autoPublish)
+{
+    (void)handle;
+    (void)filter;
+    (void)autoPublish;
+    (void)interval;
+    printf(
+        "eventSubHandler called:\n" \
+        "\taction=%s\n" \
+        "\teventName=%s\n",
+        action == RBUS_EVENT_ACTION_SUBSCRIBE ? "subscribe" : "unsubscribe",
+        eventName);
+
+    if(!strcmp("Device.Provider1.Event1!", eventName))
+    {
+        subscribed = action == RBUS_EVENT_ACTION_SUBSCRIBE ? 1 : 0;
+    }
+
+    return RBUS_ERROR_SUCCESS;
+}
+
 int rbusProvider(rbusGtest_t test, pid_t pid, int *consumer_status)
 {
   rbusHandle_t handle;
@@ -373,7 +395,9 @@ int rbusProvider(rbusGtest_t test, pid_t pid, int *consumer_status)
     {(char *)"Device.rbusProvider.Method11()", RBUS_ELEMENT_TYPE_METHOD, {NULL, NULL, NULL, NULL, NULL, methodHandler}},
     {(char *)"Device.rbusProvider.Method123()", RBUS_ELEMENT_TYPE_METHOD, {NULL, NULL, NULL, NULL, NULL, methodHandler}},
     {(char *)"Device.rbusProvider.MethodAsync1()", RBUS_ELEMENT_TYPE_METHOD, {NULL, NULL, NULL, NULL, NULL, methodHandler}},
-    {(char *)"Device.rbusProvider.MethodAsync_2()", RBUS_ELEMENT_TYPE_METHOD, {NULL, NULL, NULL, NULL, NULL, methodHandler}}
+    {(char *)"Device.rbusProvider.MethodAsync_2()", RBUS_ELEMENT_TYPE_METHOD, {NULL, NULL, NULL, NULL, NULL, methodHandler}},
+    {"Device.rbusProvider.Event1!", RBUS_ELEMENT_TYPE_EVENT, {NULL, NULL, NULL, NULL, eventSubHandler1, NULL}},
+    {"Device.rbusProvider.SubEvent!", RBUS_ELEMENT_TYPE_EVENT, {NULL, NULL, NULL, NULL, eventSubHandler1, NULL}}
   };
 #define elements_count sizeof(dataElements)/sizeof(dataElements[0])
 
@@ -381,12 +405,11 @@ int rbusProvider(rbusGtest_t test, pid_t pid, int *consumer_status)
   printf("%s: start\n",componentName);
   rc = rbus_open(&handle, componentName);
   EXPECT_EQ(rc,RBUS_ERROR_SUCCESS);
-
   if(RBUS_ERROR_SUCCESS != rc) goto exit2;
 
   if(RBUS_GTEST_ASYNC_SUB4 == test)
     sleep(7);
-
+  printf("Reg Data Elements\n");
   rc = rbus_regDataElements(handle, elements_count, dataElements);
   EXPECT_EQ(rc,RBUS_ERROR_SUCCESS);
   if(RBUS_ERROR_SUCCESS != rc) goto exit1;
@@ -402,6 +425,24 @@ int rbusProvider(rbusGtest_t test, pid_t pid, int *consumer_status)
     rc |= rbusTable_addRow(handle, "Device.rbusProvider.PartialPath.", NULL, NULL);
     EXPECT_EQ(rc,RBUS_ERROR_SUCCESS);
   }
+  if(RBUS_GTEST_SUBSCRIBE_RAW_DATA == test)
+  {
+        sleep(3);
+
+        //if(subscribed)
+        //{
+            sleep(2);
+            printf("======= publishing RawData Event ===== \n");
+
+            rbusEventRawData_t event = {0};
+            event.name = dataElements[22].name;
+            event.rawData = "Hello";
+            event.rawDataLen = strlen("Hello")+1;
+
+            rc = rbusEvent_PublishRawData(handle, &event);
+            EXPECT_EQ(rc , RBUS_ERROR_SUCCESS)<<"provider: rbusEvent_PublishRawData Event failed";
+       //}
+   }
 
   wait_ret = waitpid(pid, consumer_status, 0);
   EXPECT_EQ(wait_ret,pid);
@@ -414,9 +455,6 @@ int rbusProvider(rbusGtest_t test, pid_t pid, int *consumer_status)
     rc |= rbusTable_removeRow(handle,"Device.rbusProvider.PartialPath.0");
     EXPECT_EQ(rc,RBUS_ERROR_SUCCESS);
   }
-
-  rc |= rbus_unregDataElements(handle, elements_count, dataElements);
-  EXPECT_EQ(rc,RBUS_ERROR_SUCCESS);
 
 exit1:
   rc |= rbus_close(handle);

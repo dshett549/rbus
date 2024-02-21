@@ -190,6 +190,20 @@ static int exec_rbus_set_test(rbusHandle_t handle, int expectedRc, const char *p
   return rc;
 }
 
+static void generalEvent1Handler(
+    rbusHandle_t handle,
+    rbusEventRawData_t const* event,
+    rbusEventSubscription_t* subscription)
+{
+    (void)handle;
+    (void)subscription;
+    printf("\nevent_receive_handler1 called\n\r");
+    printf("Event received %s\n\r", event->name);
+    printf("Event data: %s\n\r", (char*)event->rawData);
+    printf("Event data len: %d\n\r", event->rawDataLen);
+    printf("\n\r");
+}
+
 static void eventReceiveHandler(
     rbusHandle_t handle,
     rbusEvent_t const* event,
@@ -284,6 +298,31 @@ static void subscribeHandler(
   printf("subscribeHandler called:  error val=%d\n", error);
 }
 
+/*static void event_receive_handler1(_rbusHandle* handle, rbusEventRawData_t const* event, _rbusEventSubscription* subscription)
+{
+    (void)handle;
+    (void)subscription;
+    runSteps = __LINE__;
+    printf("\nevent_receive_handler1 called\n\r");
+    printf("Event received %s\n\r", event->name);
+    printf("Event data: %s\n\r", (char*)event->rawData);
+    printf("Event data len: %d\n\r", event->rawDataLen);
+    printf("\n\r");
+}*/
+
+/*static void EventHandler(
+    _rbusHandle* handle,
+    rbusEventRawData_t const* event,
+    _rbusEventSubscription* subscription)
+{
+    (void)handle;
+    (void)subscription;
+    printf("\nevent_receive_handler1 called\n\r");
+    printf("Event received %s\n\r", event->name);
+    printf("Event data: %s\n\r", (char*)event->rawData);
+    printf("Event data len: %d\n\r", event->rawDataLen);
+    printf("\n\r");
+}*/
 
 int rbusConsumer(rbusGtest_t test, pid_t pid, int runtime)
 {
@@ -420,6 +459,73 @@ int rbusConsumer(rbusGtest_t test, pid_t pid, int runtime)
         EXPECT_EQ(rc,RBUS_ERROR_SUCCESS);
 
         sleep(runtime);
+      }
+      break;
+    case RBUS_GTEST_ASYNC_SUB6:
+      {
+	unsigned int quit_counter = 10;
+        isElementPresent(handle, event_param);
+        strcpy(user_data,"My User Data");
+        rc = rbusEvent_SubscribeAsync(handle, event_param, eventReceiveHandler, subscribeHandler, user_data,0);
+        EXPECT_EQ(rc,RBUS_ERROR_SUCCESS);
+        while((!rbusEvent_IsSubscriptionExist(handle, "Device.TestProvider.Event1!", NULL)) && (quit_counter--))
+        {
+           sleep(runtime);
+	}
+
+        rc |= rbusEvent_Unsubscribe(handle, event_param);
+        EXPECT_EQ(rc,RBUS_ERROR_SUCCESS);
+      }
+      break;
+    case RBUS_GTEST_SUBSCRIBE_RAW_DATA:
+      {
+        rbusHandle_t directHandle = NULL;
+	char* data[2] = { "My Data 1", "My Data2" };
+	rbusEventRawData_t event = {0};
+        event.name = "Device.rbusProvider.Event!";
+        event.rawData = "Hello";
+        event.rawDataLen = strlen("Hello")+1;
+
+	rc = rbus_openDirect(handle, &directHandle, "Device.rbusProvider.Event1!");
+	EXPECT_EQ(rc,RBUS_ERROR_SUCCESS);
+        rc = rbusEvent_SubscribeRawData(
+        handle,
+        "Device.rbusProvider.Event1!",
+        (rbusEventHandler_t)generalEvent1Handler,
+        data[0],
+        0);
+	EXPECT_EQ(rc,RBUS_ERROR_SUCCESS);
+	sleep(runtime);
+        rc = rbusEvent_UnsubscribeRawData(handle, "Device.rbusProvider.Event1!");
+	EXPECT_EQ(rc,RBUS_ERROR_SUCCESS);
+        rc = rbus_closeDirect(directHandle);
+	EXPECT_EQ(rc,RBUS_ERROR_SUCCESS);
+      }
+      break;
+    case RBUS_EVENT_SUBSCRIBE_EX_RAW_DATA:
+      {
+        rbusHandle_t directHandle = NULL;
+        char* data[2] = { "My Data 1", "My Data2" };
+        rbusEventSubscription_t	subscriptions =
+             {"Device.rbusProvider.SubEvent!", NULL, 0, 0, (void*)generalEvent1Handler, data[0], NULL, NULL, false};
+        rc = rbus_openDirect(handle, &directHandle, "Device.rbusProvider.Event1!");
+        EXPECT_EQ(rc,RBUS_ERROR_SUCCESS);
+        rc = rbusEvent_SubscribeRawData(
+        handle,
+        "Device.rbusProvider.Event1!",
+        (rbusEventHandler_t)generalEvent1Handler,
+        data[0],
+        0);
+        EXPECT_EQ(rc,RBUS_ERROR_SUCCESS);
+	rc = rbusEvent_SubscribeExRawData(handle, &subscriptions, 1, 0);
+	EXPECT_EQ(rc,RBUS_ERROR_SUCCESS);
+
+        rc = rbusEvent_UnsubscribeRawData(handle, "Device.rbusProvider.Event1!");
+        EXPECT_EQ(rc,RBUS_ERROR_SUCCESS);
+        rc = rbus_closeDirect(directHandle);
+        EXPECT_EQ(rc,RBUS_ERROR_SUCCESS);
+	rc = rbusEvent_UnsubscribeExRawData(handle, &subscriptions, 1);
+	EXPECT_EQ(rc,RBUS_ERROR_SUCCESS);
       }
       break;
     case RBUS_GTEST_INTERVAL_SUB1:
@@ -742,6 +848,11 @@ int rbusConsumer(rbusGtest_t test, pid_t pid, int runtime)
         rc = rbus_getExt(handle, 1, &params, &actualCount, &props);
         if(rc == RBUS_ERROR_SUCCESS)
         {
+	  rbusRowName_t* row = NULL;
+	  rc =rbusTable_getRowNames(handle, params, &row);
+	  EXPECT_EQ(rc, RBUS_ERROR_SUCCESS);
+	  rc =rbusTable_freeRowNames(handle, row);
+	  EXPECT_EQ(rc, RBUS_ERROR_SUCCESS);
           next = props;
           while(next)
           {

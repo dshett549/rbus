@@ -507,6 +507,21 @@ TEST(rbusAsyncSubTest, test5)
   exec_func_test(RBUS_GTEST_ASYNC_SUB5);
 }
 
+TEST(rbusAsyncSubTest, test6)
+{
+  exec_func_test(RBUS_GTEST_ASYNC_SUB6);
+}
+
+TEST(rbusEventSubscribeRawData, test1)
+{
+  exec_func_test(RBUS_GTEST_SUBSCRIBE_RAW_DATA);
+}
+
+TEST(rbusEventSubscribeExRawData, test1)
+{
+  exec_func_test(RBUS_EVENT_SUBSCRIBE_EX_RAW_DATA);
+}
+
 TEST(rbusRegRowTest, test)
 {
   exec_func_test(RBUS_GTEST_REG_ROW);

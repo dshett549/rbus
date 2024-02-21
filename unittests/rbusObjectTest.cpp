@@ -581,3 +581,22 @@ TEST(rbusObjectTest, testGetByte)
   rbusObject_Release(obj);
   rbusProperty_Release(prop1);
 }
+
+TEST(rbusObjectTest, rbusObject_InitMultiInstance)
+{
+   rbusObject_t obj;
+   rbusProperty_t prop1;
+   uint16_t i16;
+  // rbusObject_Init(&obj, "Hosts");
+   rbusObject_InitMultiInstance(&obj, "Host");
+   rbusProperty_Init(&prop1, "nulval", NULL);
+   rbusObject_SetPropertyUInt16(obj, "uint16", 1234);
+
+   EXPECT_EQ(rbusObject_GetPropertyUInt16(obj, "uint16", &i16),RBUS_VALUE_ERROR_SUCCESS);
+   /*rbusObject_SetParent(obj1, obj);
+   rbusObject_SetChildren(obj1, obj2);*/
+   rbusObject_Release(obj);
+   //rbusObject_Release(obj1);
+   //rbusObject_Release(obj2);
+   rbusProperty_Release(prop1);
+}
