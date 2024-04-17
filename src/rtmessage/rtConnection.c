@@ -18,7 +18,6 @@
 # limitations under the License.
 ##########################################################################
 */
-#include "rbuscore_message.h"
 #include "rtMessage.h"
 #include "rtConnection.h"
 #include "rtCipher.h"

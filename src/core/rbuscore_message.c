@@ -194,14 +194,14 @@ rtError rbusMessage_GetString(rbusMessage const message, char const** value)
     return RT_OK;
 }
 
-rtError rbusMessageSetBool(rbusMessage const message, bool b)
+rtError rbusMessage_SetBool(rbusMessage const message, bool b)
 {
   if(b)
      message->upk.data.via.boolean = b;
   return RT_OK;
 }
 
-rtError rbusMessageGetBool(rbusMessage const message, bool *b)
+rtError rbusMessage_GetBool(rbusMessage const message, bool *b)
 {
    VERIFY_UNPACK(MSGPACK_OBJECT_BOOLEAN);
    *b = message->upk.data.via.boolean;

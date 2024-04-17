@@ -27,7 +27,6 @@
 #include <string.h>
 #include <assert.h>
 #include <sys/socket.h>
-#include "rbuscore_message.h"
 
 #define RT_UNUSED(x) UNUSED_ ## x __attribute__((__unused__))
 
