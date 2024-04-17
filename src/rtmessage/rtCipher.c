@@ -82,7 +82,7 @@ CreateSpake2PlusInstance(rbusMessage const opts, SPAKE2PLUS** spake2_ctx)
   APPLY_STRING_OPTION(opts,  macfunc_name, SPAKE2PLUS_HMAC_SEARCH_NAME);
 
   is_server = false;
-  if (rtMessage_GetBool(opts, RT_CIPHER_SPAKE2_IS_SERVER, &is_server) == RT_OK && is_server)
+  if (rbusMessage_GetBool(opts, &is_server) == RT_OK && is_server)
     client_or_server = SPAKE2PLUS_SERVER;
   else
     client_or_server = SPAKE2PLUS_CLIENT;
@@ -192,7 +192,7 @@ rtCipher_CreateCipherSpake2Plus(rtCipher** cipher, rtMessage const opts)
     return rtErrorFromErrno(ENOMEM);
   (*cipher)->spake2_ctx = spake2_ctx;
   (*cipher)->is_server = false;
-  rtMessage_GetBool(opts, RT_CIPHER_SPAKE2_IS_SERVER, &(*cipher)->is_server);
+  rbusMessage_GetBool(opts, &(*cipher)->is_server);
 
   rtLog_Debug("rtCipher created");
 
@@ -345,7 +345,7 @@ rtCipher_RunKeyExchangeClient(rtCipher* cipher, rtConnection con)
   // add our pA to message
   //
   rtLog_Info("spake2+ add pA to message");
-  err = rtMessage_AddBinaryData(msg1, "pA", pA, pA_len);
+  err = rtMessage_AddBinaryData(msg1, pA, pA_len);
   if (err != RT_OK)
   {
     rtLog_Error("spake2+ add pA to message failed");
@@ -370,7 +370,7 @@ rtCipher_RunKeyExchangeClient(rtCipher* cipher, rtConnection con)
   //  get the server's pB
   //
   rtLog_Info("spake2+ read pB from response");
-  err = rtMessage_GetBinaryData(res1, "pB", (void**)&pB, (uint32_t*)&pB_len);
+  err = rtMessage_GetBinaryData(res1, (void**)&pB, (uint32_t*)&pB_len);
   if (err != RT_OK)
   {
     rtLog_Error("spake2+ read pB from response failed");
@@ -392,7 +392,7 @@ rtCipher_RunKeyExchangeClient(rtCipher* cipher, rtConnection con)
   //  get the server's Fb
   //
   rtLog_Info("spake2+ read Fb from response");
-  err = rtMessage_GetBinaryData(res1, "Fb", (void**)&Fb, (uint32_t*)&Fb_len);
+  err = rtMessage_GetBinaryData(res1, (void**)&Fb, (uint32_t*)&Fb_len);
   if (err != RT_OK)
   {
     rtLog_Error("spake2+ read Fb from response failed");
@@ -407,7 +407,7 @@ rtCipher_RunKeyExchangeClient(rtCipher* cipher, rtConnection con)
   rbusMessage_SetInt32(msg2, 2);
 
   rtLog_Info("spake2+ add Fa to response");
-  err = rtMessage_AddBinaryData(msg2, "Fa", Fa, Fa_len);
+  err = rtMessage_AddBinaryData(msg2, Fa, Fa_len);
   if (err != RT_OK)
   {
     rtLog_Error("spake2+ add Fa to response failed");
@@ -542,7 +542,7 @@ rtCipher_RunKeyExchangeServer(rtCipher* cipher, rbusMessage request, rbusMessage
     // get client's pA
     //
     rtLog_Info("spake2+ read pA from request");
-    err = rtMessage_GetBinaryData(request, "pA", (void**)&pA, &pA_len);
+    err = rtMessage_GetBinaryData(request, (void**)&pA, &pA_len);
     if (err != RT_OK)
     {
       rtLog_Error("spake2+ read pA from request failed");
@@ -556,7 +556,7 @@ rtCipher_RunKeyExchangeServer(rtCipher* cipher, rbusMessage request, rbusMessage
 
     rbusMessage_Init(response);
 
-    err = rtMessage_AddBinaryData(*response, "pB", pB, pB_len);
+    err = rtMessage_AddBinaryData(*response, pB, pB_len);
     if (err != RT_OK)
     {
       rtLog_Error("spake2+ add pB to response failed");
@@ -578,7 +578,7 @@ rtCipher_RunKeyExchangeServer(rtCipher* cipher, rbusMessage request, rbusMessage
     // add our Fb to response
     //
     rtLog_Info("spake2+ add Fb to response");
-    err = rtMessage_AddBinaryData(*response, "Fb", Fb, Fb_len);
+    err = rtMessage_AddBinaryData(*response, Fb, Fb_len);
     if (err != RT_OK)
     {
       rtLog_Error("spake2+ add Fb to response failed");
@@ -594,7 +594,7 @@ rtCipher_RunKeyExchangeServer(rtCipher* cipher, rbusMessage request, rbusMessage
     // get the client's Fa
     //
     rtLog_Info("spake2+ read Fa from request");
-    err = rtMessage_GetBinaryData(request, "Fa", (void**)&Fa, &Fa_len);
+    err = rtMessage_GetBinaryData(request, (void**)&Fa, &Fa_len);
     if (err != RT_OK)
     {
       rtLog_Error("spake2+ read Fa from request failed");

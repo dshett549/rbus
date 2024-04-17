@@ -21,7 +21,7 @@
 #define __RBUS_CORE_MSG_H__ 
 
 #include <rtError.h>
-
+#include <stdbool.h>
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -55,7 +55,8 @@ rtError rbusMessage_GetDouble(rbusMessage const message, double* value);
 
 rtError rbusMessage_SetMessage(rbusMessage message, rbusMessage const item);
 rtError rbusMessage_GetMessage(rbusMessage const message, rbusMessage* value);
-
+rtError rbusMessageGetBool(rbusMessage const message, bool *b);
+rtError rbusMessageSetBool(rbusMessage const message, bool b);
 #ifdef __cplusplus
 }
 #endif
