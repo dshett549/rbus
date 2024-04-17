@@ -170,7 +170,7 @@ CreateSpake2PlusInstance(rbusMessage const opts, SPAKE2PLUS** spake2_ctx)
 }
 
 rtError
-rtCipher_CreateCipherSpake2Plus(rtCipher** cipher, rtMessage const opts)
+rtCipher_CreateCipherSpake2Plus(rtCipher** cipher, rbusMessage const opts)
 {
   rtError err;
   SPAKE2PLUS* spake2_ctx = NULL;

@@ -24,6 +24,7 @@
 #include <rtError.h>
 #include <rtMessage.h>
 #include <rtConnection.h>
+#include "rbuscore_message.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -97,8 +98,8 @@ rtCipher_RunKeyExchangeClient(
 rtError 
 rtCipher_RunKeyExchangeServer(
   rtCipher* cipher, 
-  rtMessage request, 
-  rtMessage* response, 
+  rbusMessage request, 
+  rbusMessage* response, 
   uint8_t** key);
 
 #ifdef __cplusplus
