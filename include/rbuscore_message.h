@@ -55,8 +55,8 @@ rtError rbusMessage_GetDouble(rbusMessage const message, double* value);
 
 rtError rbusMessage_SetMessage(rbusMessage message, rbusMessage const item);
 rtError rbusMessage_GetMessage(rbusMessage const message, rbusMessage* value);
-rtError rbusMessageGetBool(rbusMessage const message, bool *b);
-rtError rbusMessageSetBool(rbusMessage const message, bool b);
+rtError rbusMessage_GetBool(rbusMessage const message, bool *b);
+rtError rbusMessage_SetBool(rbusMessage const message, bool b);
 #ifdef __cplusplus
 }
 #endif
