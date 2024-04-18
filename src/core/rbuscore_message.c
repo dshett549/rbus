@@ -140,7 +140,7 @@ rtError rbusMessage_ToString(rbusMessage message, char** s, uint32_t* n)
     }
     else
     {
-        *s = (char*)message->upk.data.via.i64;
+        *s = (char*)message->upk.data.via.str.ptr;
         *n = message->upk.data.via.str.size;
 	return RT_OK;
     }
