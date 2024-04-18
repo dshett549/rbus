@@ -132,6 +132,20 @@ void rbusMessage_ToBytes(rbusMessage message, uint8_t** buff, uint32_t* n)
     *n = message->sbuf.size;
 }
 
+rtError rbusMessage_ToString(rbusMessage message, char** s, uint32_t* n)
+{
+    if(!message)
+    {
+        return RT_FAIL;
+    }
+    else
+    {
+        *s = (char*)message->upk.data.via.i64;
+        *n = message->upk.data.via.str.size;
+	return RT_OK;
+    }
+}
+
 void rbusMessage_ToDebugString(rbusMessage const m, char** s, uint32_t* n)
 {
     const int ALLOC_INCREMENT = 2048;

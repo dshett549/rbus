@@ -57,6 +57,7 @@ rtError rbusMessage_SetMessage(rbusMessage message, rbusMessage const item);
 rtError rbusMessage_GetMessage(rbusMessage const message, rbusMessage* value);
 rtError rbusMessage_GetBool(rbusMessage const message, bool *b);
 rtError rbusMessage_SetBool(rbusMessage const message, bool b);
+rtError rbusMessage_ToString(rbusMessage message, char** s, uint32_t* n);
 #ifdef __cplusplus
 }
 #endif
