@@ -152,12 +152,10 @@ function build()
     cd ${RDK_PROJECT_ROOT_PATH}/opensource/src/rbus/build
     make
     $RDK_DUMP_SYMS src/rtmessage/librtMessage.so > src/rtmessage/librtMessage.so.sym
-    $RDK_DUMP_SYMS src/rbus/librbus.so > src/rbus/librbus.so.sym
     if [ "$RDK_COMPONENT_NAME" != "xwrbus" ]; then
        $RDK_DUMP_SYMS src/rtmessage/rtrouted > src/rtmessage/rtrouted.sym
     fi
     mv src/rtmessage/*.sym $RDK_PROJECT_ROOT_PATH/sdk/fsroot/syms
-    mv src/rbus/*.sym $RDK_PROJECT_ROOT_PATH/sdk/fsroot/syms
     
     if [ "$RDK_COMPONENT_NAME" != "xwrbus" ]; then
       $STRIP src/rtmessage/rtrouted
@@ -178,7 +176,6 @@ function install()
     cd ${RDK_PROJECT_ROOT_PATH}/opensource/src/rbus/build
     make install
     cp -f src/rtmessage/librt* ${RDK_PROJECT_ROOT_PATH}/opensource/lib
-    cp -f src/rbus/librbus* ${RDK_PROJECT_ROOT_PATH}/opensource/lib
     cp ${RDK_SOURCE_PATH}/conf/rbus_client_rdkc.conf ${RDK_FSROOT_PATH}/etc/rbus_client.conf
 }
 
