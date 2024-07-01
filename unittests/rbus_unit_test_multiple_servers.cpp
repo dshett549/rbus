@@ -145,14 +145,14 @@ static void CREATE_RBUS_SERVER_INSTANCE3(const char * app_prefix, int num)
 static void RBUS_PULL_OBJECT2(char* expected_data, char* server_obj, rbusCoreError_t expected_err)
 {
     rbusCoreError_t err = RBUSCORE_SUCCESS;
-    rbusMessage response;
+    rtMessage response;
     if((err = rbus_pullObj(server_obj, 1000, &response)) == RBUSCORE_SUCCESS)
     {
         const char* buff = NULL;
-        rbusMessage_GetString(response, &buff);
+        rtMessage_GetString(response, "buffer",&buff);
         printf("%s: rbus pull returned : %s \n", __FUNCTION__, buff);
         EXPECT_STREQ(buff, expected_data) << "rbus_pullObj failed to procure expected string";
-        rbusMessage_Release(response);
+        rtMessage_Release(response);
     }
     else
     {
@@ -165,9 +165,9 @@ static void RBUS_PULL_OBJECT2(char* expected_data, char* server_obj, rbusCoreErr
 static void RBUS_PUSH_OBJECT2(char* data, char* server_obj, rbusCoreError_t expected_err)
 {
     rbusCoreError_t err = RBUSCORE_SUCCESS;
-    rbusMessage setter;
-    rbusMessage_Init(&setter);
-    rbusMessage_SetString(setter, data);
+    rtMessage setter;
+    rtMessage_Create(&setter);
+    rtMessage_SetString(setter, "data",data);
     err = rbus_pushObj(server_obj, setter, 1000);
     EXPECT_EQ(err, expected_err) << "rbus_pushObj failed";
     return;

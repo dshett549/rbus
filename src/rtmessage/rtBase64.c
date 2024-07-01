@@ -58,15 +58,115 @@ static unsigned char decode_base64_char(unsigned char in, bool * error)
         return 0;
     }
 }
+#if 0
+rtError rtBase64_encode(const char * input, size_t input_length, char** output, size_t output_length){
+//char* encode_to_base64(const char* input) {
+    //size_t input_length = strlen(input);
+    output_length = 4 * ((input_length + 2) / 3); // Calculate output length
 
+    char* encoded = (char*)malloc(output_length + 1);
+    if (!encoded) {
+        perror("Memory allocation failed");
+        return RT_FAIL;
+    }
+
+    // Base64 character set
+    const char base64_chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+    size_t i, j = 0;
+    for (i = 0; i < input_length; i += 3) {
+        uint32_t value = 0;
+        for (size_t k = 0; k < 3; ++k) {
+            value <<= 8;
+            if (i + k < input_length) {
+                value |= (uint8_t)input[i + k];
+            }
+        }
+
+        for (size_t k = 0; k < 4; ++k) {
+            encoded[j++] = base64_chars[(value >> (18 - k * 6)) & 0x3F];
+        }
+    }
+
+    // Add padding if necessary
+    while (j % 4 != 0) {
+        encoded[j++] = '=';
+    }
+
+    encoded[j] = '\0';
+    printf("Encoded:%s\n", encoded);
+    *output = encoded;
+    return RT_OK;
+}
+
+rtError rtBase64_decode(const char * base64_string, size_t input_length,  unsigned char** output, size_t *output_length){
+//unsigned char* decode_from_base64(const char* base64_string, size_t* output_length) {
+    //size_t input_length = strlen(base64_string);
+    if (input_length % 4 != 0) {
+        fprintf(stderr, "Invalid base64 string length\n");
+        return RT_FAIL;
+    }
+
+    // Base64 character set
+    const char base64_chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+    // Initialize the output buffer
+    *output_length = (input_length / 4) * 3;
+    if (base64_string[input_length - 1] == '=') (*output_length)--;
+    if (base64_string[input_length - 2] == '=') (*output_length)--;
+    unsigned char* decoded_data = (unsigned char*)malloc(*output_length);
+    if (!decoded_data) {
+        perror("Memory allocation failed");
+        return RT_FAIL;
+    }
+
+    // Decode the base64 string
+    size_t j = 0;
+    for (size_t i = 0; i < input_length; i += 4) {
+        uint32_t value = 0;
+        for (size_t k = 0; k < 4; ++k) {
+            const char* pos = strchr(base64_chars, base64_string[i + k]);
+            if (pos) {
+                value |= (uint32_t)(pos - base64_chars) << (18 - k * 6);
+            }
+        }
+
+        for (size_t k = 0; k < 3; ++k) {
+            if (j < *output_length) {
+                decoded_data[j++] = (value >> (16 - k * 8)) & 0xFF;
+            }
+        }
+    }
+    printf("Decoded data:%s, Address:%p\n",decoded_data, decoded_data);
+    for(size_t i=0; i< j; ++i){
+	    printf("ptr_data:%u\n",decoded_data[i]);
+    }
+    printf("Length:%ld, j:%ld\n",*output_length,j);
+    *output = decoded_data;
+    //*output_length = strlen((const char*)decoded_data);
+    *output_length = j;
+    printf("output:%s,Address:%p, size:%ld\n", (unsigned char*)*output,*output, *output_length);
+    return RT_OK;
+}
+/*
+int main() {
+    const char* input_data = "Hello, World!";
+    char* base64_string = encode_to_base64(input_data);
+    printf("Base64 encoded string: %s\n", base64_string);
+
+    // Remember to free the allocated memory
+    free(base64_string);
+    return 0;
+}*/
+#endif
 rtError rtBase64_encode(const void * in, const unsigned int in_size, unsigned char ** out, unsigned int *out_size)
 {
     unsigned char * read_buff = (unsigned char * )in;
-    if(RBUS_BINARY_DATA_SIZE_LIMIT < in_size)
+    /*if(RBUS_BINARY_DATA_SIZE_LIMIT < in_size)
     {
         rtLog_Error("Cannot encode more than %d bytes as binary data. Request for %d bytes is denied.", RBUS_BINARY_DATA_SIZE_LIMIT, in_size);
         return RT_ERROR;
-    }
+    }*/
 
     unsigned int last_group_len = in_size % 3;
 
@@ -131,18 +231,22 @@ rtError rtBase64_encode(const void * in, const unsigned int in_size, unsigned ch
 
 rtError rtBase64_decode(const unsigned char * in, const unsigned int in_size,  void ** out, unsigned int *out_size)
 {
-    if(RBUS_BASE64_DATA_SIZE_LIMIT < in_size)
+    if(in_size == 0){
+	 *out = NULL;
+	 return RT_OK;
+    }
+    /*if(RBUS_BASE64_DATA_SIZE_LIMIT < in_size)
     {
         rtLog_Error("Cannot decode more than %d bytes. Request for %d bytes is denied.", RBUS_BASE64_DATA_SIZE_LIMIT, in_size);
         return RT_ERROR;
-    }
+    }*/
     int num_padding_bytes = 0;
     if(0 != (in_size % 4))
     {
         rtLog_Error("Illegal base64 encoding. Length is %d. It has to be a multiple of 4.", in_size);
         return RT_ERROR;
     }
-
+    printf("IN_Msg:%p\t in_size:%d\n",in,in_size);
     /*Allocate memory for the output*/
     *out_size = in_size * 3 / 4;
     if('=' == in[in_size -2])
@@ -199,4 +303,3 @@ rtError rtBase64_decode(const unsigned char * in, const unsigned int in_size,  v
     *out = write_buff;
     return RT_OK;
 }
-

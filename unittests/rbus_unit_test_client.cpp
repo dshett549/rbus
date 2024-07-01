@@ -102,13 +102,13 @@ static bool CALL_RBUS_PULL_OBJECT(char* expected_data, char* server_obj)
 {
     bool result = false;
     rbusCoreError_t err = RBUSCORE_SUCCESS;
-    rbusMessage response;
+    rtMessage response;
     if((err = rbus_pullObj(server_obj, 1000, &response)) == RBUSCORE_SUCCESS)
     {
         const char* buff = NULL;
-        rbusMessage_GetString(response, &buff);
+        rtMessage_GetString(response, "buffer",&buff);
         EXPECT_STREQ(buff, expected_data) << "rbus_pullObj failed to procure the server's initial string -init init init- ";
-        rbusMessage_Release(response);
+        rtMessage_Release(response);
         result = true;
     }
     else
@@ -122,9 +122,9 @@ static bool CALL_RBUS_PULL_OBJECT(char* expected_data, char* server_obj)
 static bool CALL_RBUS_PUSH_OBJECT(char* data, char* server_obj)
 {
     rbusCoreError_t err = RBUSCORE_SUCCESS;
-    rbusMessage setter;
-    rbusMessage_Init(&setter);
-    rbusMessage_SetString(setter, data);
+    rtMessage setter;
+    rtMessage_Create(&setter);
+    rtMessage_SetString(setter, "buffer",data);
     err = rbus_pushObj(server_obj, setter, 1000);
     EXPECT_EQ(err, RBUSCORE_SUCCESS) << "rbus_pushObj failed";
     return true;
@@ -133,9 +133,9 @@ static bool CALL_RBUS_PUSH_OBJECT(char* data, char* server_obj)
 static bool CALL_RBUS_PUSH_OBJECT_NO_ACK(char* data, char* server_obj)
 {
     rbusCoreError_t err = RBUSCORE_SUCCESS;
-    rbusMessage setter;
-    rbusMessage_Init(&setter);
-    rbusMessage_SetString(setter, data);
+    rtMessage setter;
+    rtMessage_Create(&setter);
+    rtMessage_SetString(setter, "buffer",data);
     err = rbus_pushObjNoAck(server_obj, setter);
     EXPECT_EQ(err, RBUSCORE_SUCCESS) << "rbus_pushObj failed";
     return true;
@@ -144,18 +144,18 @@ static bool CALL_RBUS_PUSH_OBJECT_NO_ACK(char* data, char* server_obj)
 static bool CALL_RBUS_PUSH_OBJECT_DETAILED(char* server_obj, test_struct_t ip_data)
 {
     rbusCoreError_t err = RBUSCORE_SUCCESS;
-    rbusMessage setter;
-    rbusMessage response;
-    rbusMessage_Init(&setter);
-    rbusMessage_SetString(setter, ip_data.name);
+    rtMessage setter;
+    rtMessage response;
+    rtMessage_Create(&setter);
+    rtMessage_SetString(setter, "name",ip_data.name);
     //printf("Set name : %s \n",ip_data.name);
-    rbusMessage_SetInt32(setter, ip_data.age);
+    rtMessage_SetInt32(setter, "age",ip_data.age);
     //printf("Set age : %d  \n", ip_data.age);
     err = rbus_invokeRemoteMethod(server_obj, METHOD_SETPARAMETERATTRIBUTES, setter, 1000, &response);
     EXPECT_EQ(err, RBUSCORE_SUCCESS) << "RPC invocation failed";
 
     if(RBUSCORE_SUCCESS == err)
-        rbusMessage_Release(response);
+        rtMessage_Release(response);
     return true;
 }
 
@@ -164,15 +164,15 @@ static bool CALL_RBUS_PULL_OBJECT_DETAILED(char* server_obj, test_struct_t expec
     bool result = false;
     int age = 0;
     rbusCoreError_t err = RBUSCORE_SUCCESS;
-    rbusMessage response;
+    rtMessage response;
     if((err = rbus_invokeRemoteMethod(server_obj, METHOD_GETPARAMETERATTRIBUTES, NULL, 1000, &response)) == RBUSCORE_SUCCESS)
     {
         const char* buff = NULL;
-        rbusMessage_GetString(response, &buff);
-        rbusMessage_GetInt32(response, &age);
+        rtMessage_GetString(response, "name",&buff);
+        rtMessage_GetInt32(response, "age",&age);
         EXPECT_STREQ(buff, expected_op.name) << "METHOD_GETPARAMETERATTRIBUTES failed to procure expected name ";
         EXPECT_EQ(age, expected_op.age) << "METHOD_GETPARAMETERATTRIBUTES failed to procure expected age ";
-        rbusMessage_Release(response);
+        rtMessage_Release(response);
         result = true;
     }
     else
@@ -185,28 +185,28 @@ static bool CALL_RBUS_PULL_OBJECT_DETAILED(char* server_obj, test_struct_t expec
 
 rbusCoreError_t CREATE_SESSION()
 {
-    rbusMessage response = NULL;
+    rtMessage response = NULL;
     rbusCoreError_t ret = RBUSCORE_SUCCESS;
 
     ret = rbus_invokeRemoteMethod(RBUS_SMGR_DESTINATION_NAME, RBUS_SMGR_METHOD_REQUEST_SESSION_ID, NULL, 1000, &response);
     if(RBUSCORE_SUCCESS == ret)
     {
         int result;
-        if(RT_OK == rbusMessage_GetInt32(response, &result))
+        if(RT_OK == rtMessage_GetInt32(response,"response", &result))
         {
             if(RBUSCORE_SUCCESS != result)
             {
                 printf("ERROR Cannot create a new session, Session already exist \n");
                 ret = RBUSCORE_ERROR_INVALID_STATE;
-                rbusMessage_Release(response);
+                rtMessage_Release(response);
                 return ret;
             }
         }
-        if(RT_OK == rbusMessage_GetInt32(response, &g_current_session_id))
+        if(RT_OK == rtMessage_GetInt32(response, "session_id",&g_current_session_id))
         {
             printf("Got new session id %d\n", g_current_session_id);
             ret = RBUSCORE_SUCCESS;
-            rbusMessage_Release(response);
+            rtMessage_Release(response);
             return ret;
         }
         else{
@@ -216,7 +216,7 @@ rbusCoreError_t CREATE_SESSION()
     else{
         printf("RPC with session manager failed.\n");
         ret = RBUSCORE_ERROR_ENTRY_NOT_FOUND;
-        rbusMessage_Release(response);
+        rtMessage_Release(response);
         return ret;
     }
     return ret;
@@ -224,7 +224,7 @@ rbusCoreError_t CREATE_SESSION()
 
 rbusCoreError_t PRINT_CURRENT_SESSION_ID()
 {
-    rbusMessage response = NULL;
+    rtMessage response = NULL;
     rbusCoreError_t ret = RBUSCORE_SUCCESS;
 
     ret = rbus_invokeRemoteMethod(RBUS_SMGR_DESTINATION_NAME, RBUS_SMGR_METHOD_GET_CURRENT_SESSION_ID, NULL, 1000, &response);
@@ -232,21 +232,21 @@ rbusCoreError_t PRINT_CURRENT_SESSION_ID()
     if(RBUSCORE_SUCCESS == ret)
     {
         int result;
-        if(RT_OK == rbusMessage_GetInt32(response, &result))
+        if(RT_OK == rtMessage_GetInt32(response, "response",&result))
         {
             if(RBUSCORE_SUCCESS != result)
             {
                 printf("Session manager reports internal error %d.\n", result);
                 ret = RBUSCORE_ERROR_INVALID_STATE;
-                rbusMessage_Release(response);
+                rtMessage_Release(response);
                 return ret;
             }
         }
-        if(RT_OK == rbusMessage_GetInt32(response, &g_current_session_id))
+        if(RT_OK == rtMessage_GetInt32(response, "session_id",&g_current_session_id))
         {
             printf("Current session id %d\n", g_current_session_id);
             ret = RBUSCORE_SUCCESS;
-            rbusMessage_Release(response);
+            rtMessage_Release(response);
             return ret;
         }
         else{
@@ -256,7 +256,7 @@ rbusCoreError_t PRINT_CURRENT_SESSION_ID()
     else{
         printf("RPC with session manager failed.\n");
         ret = RBUSCORE_ERROR_ENTRY_NOT_FOUND;
-        rbusMessage_Release(response);
+        rtMessage_Release(response);
         return ret;
     }
     return ret;
@@ -264,29 +264,29 @@ rbusCoreError_t PRINT_CURRENT_SESSION_ID()
 
 rbusCoreError_t END_SESSION(int session)
 {
-    rbusMessage out;
-    rbusMessage response = NULL;
+    rtMessage out;
+    rtMessage response = NULL;
 
-    rbusMessage_Init(&out);
-    rbusMessage_SetInt32(out, session);
+    rtMessage_Create(&out);
+    rtMessage_SetInt32(out, "session_id",session);
     rbusCoreError_t ret = RBUSCORE_SUCCESS;
 
     if(RBUSCORE_SUCCESS == rbus_invokeRemoteMethod(RBUS_SMGR_DESTINATION_NAME, RBUS_SMGR_METHOD_END_SESSION, out, 1000, &response))
     {
         int result;
-        if(RT_OK == rbusMessage_GetInt32(response, &result))
+        if(RT_OK == rtMessage_GetInt32(response, "response",&result))
         {
             if(RBUSCORE_SUCCESS != result)
             {
                 printf("ERROR Cannot end session, It doesn't match active session\n");
                 ret = RBUSCORE_ERROR_INVALID_STATE;
-                rbusMessage_Release(response);
+                rtMessage_Release(response);
                 return ret;
             }
             else{
                 printf("Successfully ended session %d.\n", session);
                 ret = RBUSCORE_SUCCESS;
-                rbusMessage_Release(response);
+                rtMessage_Release(response);
                 return ret;
             }
         }
@@ -294,7 +294,7 @@ rbusCoreError_t END_SESSION(int session)
     else{
         printf("RPC with session manager failed.\n");
         ret = RBUSCORE_ERROR_ENTRY_NOT_FOUND;
-        rbusMessage_Release(response);
+        rtMessage_Release(response);
         return ret;
     }
     return ret;

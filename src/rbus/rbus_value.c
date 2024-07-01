@@ -633,7 +633,7 @@ uint8_t const* rbusValue_GetV(rbusValue_t v)
     {
     case RBUS_STRING:
     case RBUS_BYTES:
-        return v->d.bytes->data;
+	return v->d.bytes->data;
     default:
         return (uint8_t const*)&v->d.b;
     }
@@ -685,6 +685,12 @@ void rbusValue_SetTLV(rbusValue_t v, rbusValueType_t type, uint32_t length, void
         memcpy(&v->d.b, value, length);
         break;
     }
+    int len = rbusValue_GetL(v);
+    printf("length:%d, len:%d\n",length,len);
+   //printf("value:%s\n", (const char*) value);
+    /*char *buff = NULL;
+    char *svalue = rbusValue_ToDebugString(v, buff, sizeof(buff));
+    printf("svalue = %s\n", svalue);*/
     assert(rbusValue_GetL(v) == length);
 }
 

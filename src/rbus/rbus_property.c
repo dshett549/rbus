@@ -101,8 +101,10 @@ void rbusProperty_fwrite(rbusProperty_t prop, int depth, FILE* fout)
     VERIFY_NULL(fout);
     for(i=0; i<depth; ++i)
         fprintf(fout, " ");
+
     fprintf(fout, "rbusProperty name=%s\n\r", rbusProperty_GetName(prop));
     rbusValue_fwrite(rbusProperty_GetValue(prop), depth+1, fout);
+
     fprintf(fout,"\n\r");
     prop = rbusProperty_GetNext(prop);
     if(prop)

@@ -30,17 +30,17 @@
 static int g_counter;
 static int g_current_session_id;
 
-static int request_session_id(const char * destination, const char * method, rbusMessage request, void * user_data, rbusMessage *response, const rtMessageHeader* hdr)
+static int request_session_id(const char * destination, const char * method, rtMessage request, void * user_data, rtMessage *response, const rtMessageHeader* hdr)
 {
     (void) request;
     (void) user_data;
     (void) destination;
     (void) method;
     (void) hdr;
-    rbusMessage msg;
+    rtMessage msg;
     rbusCoreError_t err = RBUSCORE_SUCCESS;
 
-    rbusMessage_Init(response);
+    rtMessage_Create(response);
     if(0 == g_current_session_id)
     {
         g_current_session_id = 1;
@@ -48,54 +48,54 @@ static int request_session_id(const char * destination, const char * method, rbu
         printf("Creating new session %d\n", g_current_session_id);
         // For debugging purpose
         //printf("Total number of times sessions created = %d\n", g_counter);
-        rbusMessage_SetInt32(*response, RBUSCORE_SUCCESS);
-        rbusMessage_SetInt32(*response, g_current_session_id);
+        rtMessage_SetInt32(*response, "response",RBUSCORE_SUCCESS);
+        rtMessage_SetInt32(*response, "session_id",g_current_session_id);
     }
     else
     {
         printf("Cannot create new session when session %d is active.\n", g_current_session_id);
-        rbusMessage_SetInt32(*response, RBUSCORE_ERROR_INVALID_STATE);
+        rtMessage_SetInt32(*response, "response",RBUSCORE_ERROR_INVALID_STATE);
     }
-    rbusMessage_Init(&msg);
-    rbusMessage_SetInt32(msg, RBUSCORE_SUCCESS);
-    rbusMessage_SetInt32(msg, (int32_t)g_current_session_id);
+    rtMessage_Create(&msg);
+    rtMessage_SetInt32(msg, "response",RBUSCORE_SUCCESS);
+    rtMessage_SetInt32(msg, "session_id",(int32_t)g_current_session_id);
     err = rbus_publishEvent(RBUS_SMGR_DESTINATION_NAME, CCSP_CURRENT_SESSION_ID_SIGNAL, msg);
     if(err != RBUSCORE_SUCCESS)
     {
         printf("rbus_publishEvent failed with ret = %d\n", err);
     }
-    rbusMessage_Release(msg);
+    rtMessage_Release(msg);
 
     return 0;
 }
 
-static int get_session_id(const char * destination, const char * method, rbusMessage request, void * user_data, rbusMessage *response, const rtMessageHeader* hdr)
+static int get_session_id(const char * destination, const char * method, rtMessage request, void * user_data, rtMessage *response, const rtMessageHeader* hdr)
 {
     (void) request;
     (void) user_data;
     (void) destination;
     (void) method;
     (void) hdr;
-    rbusMessage_Init(response);
+    rtMessage_Create(response);
     printf("Current session id is %d\n", g_current_session_id);
-    rbusMessage_SetInt32(*response, RBUSCORE_SUCCESS);
-    rbusMessage_SetInt32(*response, g_current_session_id);
+    rtMessage_SetInt32(*response, "response",RBUSCORE_SUCCESS);
+    rtMessage_SetInt32(*response, "session_id",g_current_session_id);
     return 0;
 }
 
-static int end_session(const char * destination, const char * method, rbusMessage request, void * user_data, rbusMessage *response, const rtMessageHeader* hdr)
+static int end_session(const char * destination, const char * method, rtMessage request, void * user_data, rtMessage *response, const rtMessageHeader* hdr)
 {
     (void) user_data;
     (void) destination;
     (void) method;
     (void) hdr;
-    rbusMessage msg;
+    rtMessage msg;
 
-    rbusMessage_Init(response);
+    rtMessage_Create(response);
     int sessionid = 0;
     rbusCoreError_t result = RBUSCORE_SUCCESS;
 
-    if(RT_OK == rbusMessage_GetInt32(request, &sessionid))
+    if(RT_OK == rtMessage_GetInt32(request, "sessionid",&sessionid))
     {
         if(sessionid == g_current_session_id)
         {
@@ -114,21 +114,21 @@ static int end_session(const char * destination, const char * method, rbusMessag
         printf("Session id not found. Cannot process end of session.\n");
         result = RBUSCORE_ERROR_INVALID_PARAM;
     }
-    rbusMessage_SetInt32(*response, result);
-    rbusMessage_Init(&msg);
-    rbusMessage_SetInt32(msg, RBUSCORE_SUCCESS);
-    rbusMessage_SetInt32(msg, (int32_t)g_current_session_id);
+    rtMessage_SetInt32(*response, "response",result);
+    rtMessage_Create(&msg);
+    rtMessage_SetInt32(msg, "response",RBUSCORE_SUCCESS);
+    rtMessage_SetInt32(msg, "session_id",(int32_t)g_current_session_id);
     result = rbus_publishEvent(RBUS_SMGR_DESTINATION_NAME, CCSP_CURRENT_SESSION_ID_SIGNAL, msg);
     if(result != RBUSCORE_SUCCESS)
     {
         printf("rbus_publishEvent failed with ret = %d\n", result);
     }
-    rbusMessage_Release(msg);
+    rtMessage_Release(msg);
     return 0;
 }
 
 
-static int callback(const char * destination, const char * method, rbusMessage message, void * user_data, rbusMessage *response, const rtMessageHeader* hdr)
+static int callback(const char * destination, const char * method, rtMessage message, void * user_data, rtMessage *response, const rtMessageHeader* hdr)
 {
     (void) user_data;
     (void) response;
@@ -139,7 +139,7 @@ static int callback(const char * destination, const char * method, rbusMessage m
     char* buff = NULL;
     uint32_t buff_length = 0;
 
-    rbusMessage_ToDebugString(message, &buff, &buff_length);
+    rtMessage_ToString(message, &buff, &buff_length);
     printf("%s\n", buff);
     free(buff);
 
