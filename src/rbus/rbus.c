@@ -444,7 +444,84 @@ void rbusEventData_appendToMessage(rbusEvent_t* event, rbusFilter_t filter, uint
         uint32_t duration, int32_t componentId, rtMessage msg);
 void rbusFilter_AppendToMessage(rbusFilter_t filter, rtMessage msg);
 void rbusFilter_InitFromMessage(rbusFilter_t* filter, rtMessage msg);
+void rbusObject_initFromMessage(rbusObject_t* obj, rtMessage msg)
+{
+    char const* name = NULL;
+    int type = 0;
+    int numChild = 0;
+    rbusProperty_t prop;
+    rbusObject_t children=NULL, previous=NULL;
+    char* ptr2 = NULL;
+    uint32_t length2 = 0;
 
+    rtMessage_ToString(msg, &ptr2, &length2);
+    printf("\tObjectInitmsg:%.*s\n", length2, ptr2);
+    free(ptr2);
+    rtMessage_GetString(msg,"object_name",&name);
+    rtMessage_GetInt32(msg, "type", &type);
+#if DEBUG_SERIALIZER
+    RBUSLOG_INFO("> object pop name=%s type=%d", name, type);
+#endif
+    rbusPropertyList_initFromMessage(&prop, msg);
+     rtMessage_GetInt32(msg, "childCount",&numChild);
+#if DEBUG_SERIALIZER
+    RBUSLOG_INFO("> object pop numChild=%d", numChild);
+#endif
+    rtMessage child_msg;
+    rtMessage_GetMessage(msg, "ChildObjects", &child_msg);
+    for(int i = 0; i < numChild; ++i)
+    {
+        rtMessage item;
+        rtMessage_GetMessageItem(child_msg, "Objects", i, &item);
+        rbusObject_t next;
+        rbusObject_initFromMessage(&next, item);/*object child object*/
+        if(children == NULL)
+            children = next;
+        if(previous != NULL)
+        {
+            rbusObject_SetNext(previous, next);
+            rbusObject_Release(next);
+        }
+        previous = next;
+    }
+
+    if(type == RBUS_OBJECT_MULTI_INSTANCE)
+        rbusObject_InitMultiInstance(obj, name);
+    else
+        rbusObject_Init(obj, name);
+
+    rbusObject_SetProperties(*obj, prop);
+    rbusProperty_Release(prop);
+    rbusObject_SetChildren(*obj, children);
+    rbusObject_Release(children);
+}
+void rbusObjectList_initFromMessage(rbusObject_t* obj, rtMessage msg)
+{
+    int len;
+    char* ptr2 = NULL;
+    uint32_t length2 = 0;
+
+    rtMessage_ToString(msg, &ptr2, &length2);
+    printf("\tObjectListInitmsg:%.*s\n", length2, ptr2);
+    free(ptr2);
+    rtMessage_GetArrayLength(msg, "Objects", &len);
+    printf("len:%d\n",len);
+    rtMessage child_msg;
+    rtMessage_Create(&child_msg);
+    for(int i = 0; i < len; ++i)
+    {
+        rtMessage item;
+        rtMessage_GetMessageItem(msg, "Objects", i, &item);
+	    char* ptr2 = NULL;
+    uint32_t length2 = 0;
+
+    rtMessage_ToString(item, &ptr2, &length2);
+    printf("\tObject:%.*s\n", length2, ptr2);
+    free(ptr2);
+        rbusObject_initFromMessage(obj, item);
+        rtMessage_Release(item);
+    }
+}
 rbusError_t rbusValue_initFromMessage_1(rbusValue_t* value, rtMessage msg)
 {
     void const* data;
@@ -480,7 +557,8 @@ rbusError_t rbusValue_initFromMessage_1(rbusValue_t* value, rtMessage msg)
         if(type == RBUS_OBJECT)
         {
             rbusObject_t obj;
-            rbusObject_initFromMessage(&obj, msg);
+            //rbusObject_initFromMessage(&obj, msg);
+	    rbusObjectList_initFromMessage(&obj, msg);
             rbusValue_SetObject(*value, obj);
             rbusObject_Release(obj);
         }
@@ -552,7 +630,9 @@ rbusError_t rbusValue_initFromMessage_1(rbusValue_t* value, rtMessage msg)
                     break;*/
                 default:
                     printf("Calling GetBinaryDATA\n");
+		    //rtError err = RT_OK;
                     rtMessage_GetBinaryData(msg, "value", (void**)&data, &length);
+		    printf("Line:%d,func:%s\n",__LINE__,__func__);
                     //char* p = NULL;
                     //uint32_t len = 0;
 
@@ -568,7 +648,12 @@ rbusError_t rbusValue_initFromMessage_1(rbusValue_t* value, rtMessage msg)
                     char *svalue2 = rbusValue_ToDebugString(*value, buff2, sizeof(buff2));
                     printf("svalue1 = %s\n", svalue2);
                     free(buff2);*/
-                    rbusValue_SetTLV(*value, type, length, data);
+		    //if(err == RT_OK)
+                        rbusValue_SetTLV(*value, type, length, data);
+		    //else{
+                       // rbusValue_SetTLV(*value, type, 0, NULL);
+                        printf("Line:%d,func:%s\n",__LINE__,__func__);
+		    //}
                     //free(svalue2);
                     //if(data)
                 //      free((void*)data);
@@ -624,8 +709,10 @@ rbusError_t rbusValue_initFromMessage(rbusValue_t* value, rtMessage msg)
             rtMessage m;
 	    rtMessage_GetMessage(msg,"value",&m); 
             rbusObject_t obj;
-            rbusObject_initFromMessage(&obj, m);
+            //rbusObject_initFromMessage(&obj, m);
+	    rbusObjectList_initFromMessage(&obj, m);
             rbusValue_SetObject(*value, obj);
+            rbusObject_fwrite(obj, 1, stdout);
             rbusObject_Release(obj);
         }
         else
@@ -732,7 +819,9 @@ rbusError_t rbusValue_initFromMessage(rbusValue_t* value, rtMessage msg)
                 default:
 		    printf("Calling GetBinaryDATA\n");
 		    printf("MSG:%p\n",msg);
+		    //rtError err;
                     rtMessage_GetBinaryData(msg, "value", (void**)&data, &length);
+		    printf("Line:%d,func:%s\n",__LINE__,__func__);
                     //char* p = NULL;
                     //uint32_t len = 0;
   
@@ -748,7 +837,12 @@ rbusError_t rbusValue_initFromMessage(rbusValue_t* value, rtMessage msg)
                     char *svalue2 = rbusValue_ToDebugString(*value, buff2, sizeof(buff2));
                     printf("svalue1 = %s\n", svalue2);
                     free(buff2);*/
-		    rbusValue_SetTLV(*value, type, length, data);
+		    //if(err == RT_OK)
+		        rbusValue_SetTLV(*value, type, length, data);
+		    //else{
+			//rbusValue_SetTLV(*value, type, 0, NULL);
+			printf("Line:%d,func:%s\n",__LINE__,__func__);
+		    //}
                     //free(svalue2);
 		    if(data)
 			free((void*)data);
@@ -1025,7 +1119,6 @@ void rbusPropertyList_initFromMessage_1(rbusProperty_t* prop, rtMessage msg)
     }
     *prop = first;*/
 }
-
 #endif
 void rbusPropertyList_initFromMessage(rbusProperty_t* prop, rtMessage msg)
 {
@@ -1097,6 +1190,7 @@ void rbusPropertyList_initFromMessage(rbusProperty_t* prop, rtMessage msg)
         previous = prop;
     }*/
     *prop = first;
+    rbusProperty_fwrite(first, 1, stdout);
 }
 
 void rbusObject_appendToMessage(rbusObject_t obj, rtMessage msg)
@@ -1128,7 +1222,156 @@ void rbusObject_appendToMessage(rbusObject_t obj, rtMessage msg)
         child = rbusObject_GetNext(child);
     }
 }
+void ObjectappendToMessage(rbusObject_t obj, rtMessage msg)
+{
+    int numChild = 0;
+    rbusObject_t child;
+#if DEBUG_SERIALIZER
+    RBUSLOG_INFO("> object add name=%s type=%d", rbusObject_GetName(obj), rbusObject_GetType(obj));
+#endif
+    printf("> object add name=%s type=%d", rbusObject_GetName(obj), rbusObject_GetType(obj));
+    rtMessage prop_msg;
+    rtMessage_Create(&prop_msg);
+    rtMessage_SetString(prop_msg,"object_name",rbusObject_GetName(obj));
+    rtMessage_SetInt32(prop_msg, "type",rbusObject_GetType(obj));
+    child = rbusObject_GetChildren(obj);
+    while(child)
+    {
+       numChild++;
+       child = rbusObject_GetNext(child);
+    }
+    rtMessage_SetInt32(prop_msg, "childCount", numChild);
+    rbusPropertyList_appendToMessage(rbusObject_GetProperties(obj), prop_msg);
 
+
+
+   /* child = rbusObject_GetChildren(obj);
+    while(child)
+    {
+       numChild++;
+       child = rbusObject_GetNext(child);
+    }*/
+#if DEBUG_SERIALIZER
+    RBUSLOG_INFO("> object add numChild=%d", numChild);
+#endif
+
+        rtMessage child_obj_msg;
+
+         rtMessage_Create(&child_obj_msg);
+    //if (numChild)
+    //{
+        //rtMessage child_obj_msg;
+        //rtMessage_Create(&child_obj_msg);
+        child = rbusObject_GetChildren(obj);
+        while(child)
+        {
+            ObjectappendToMessage(child, child_obj_msg);/*object child object*/
+            child = rbusObject_GetNext(child);
+        }
+        //rtMessage_AddMessage(obj_msg,"Objects",child_obj_msg);
+        //rtMessage_Release(child_obj_msg);
+    //}
+    rtMessage_SetMessage(prop_msg,"ChildObjects",child_obj_msg);
+    rtMessage_Release(child_obj_msg);
+    rtMessage_AddMessage(msg,"Objects",prop_msg);
+    rtMessage_Release(prop_msg);
+}
+#if 0
+void ObjectappendToMessage(rbusObject_t obj, rtMessage msg)
+{
+    int numChild = 0;
+    rbusObject_t child;
+#if DEBUG_SERIALIZER
+    RBUSLOG_INFO("> object add name=%s type=%d", rbusObject_GetName(obj), rbusObject_GetType(obj));
+#endif
+    printf("> object add name=%s type=%d", rbusObject_GetName(obj), rbusObject_GetType(obj));
+    rtMessage prop_msg;
+    rtMessage_Create(&prop_msg);
+    rtMessage_SetString(prop_msg,"object_name",rbusObject_GetName(obj));
+    rtMessage_SetInt32(prop_msg, "type",rbusObject_GetType(obj));
+    rtMessage_SetInt32(prop_msg, "childCount", 0);
+    rbusPropertyList_appendToMessage(rbusObject_GetProperties(obj), prop_msg);
+
+    rtMessage_AddMessage(msg,"Objects",prop_msg);
+
+    child = rbusObject_GetChildren(obj);
+    while(child)
+    {
+       numChild++;
+       child = rbusObject_GetNext(child);
+    }
+#if DEBUG_SERIALIZER
+    RBUSLOG_INFO("> object add numChild=%d", numChild);
+#endif
+    rtMessage_Release(prop_msg);
+
+        rtMessage obj_msg;
+
+         rtMessage_Create(&obj_msg);
+    if (numChild)
+    {
+        rtMessage child_obj_msg;
+        rtMessage_Create(&child_obj_msg);
+        child = rbusObject_GetChildren(obj);
+        while(child)
+        {
+            ObjectappendToMessage(child, child_obj_msg);/*object child object*/
+            child = rbusObject_GetNext(child);
+        }
+        rtMessage_AddMessage(obj_msg,"Objects",child_obj_msg);
+        rtMessage_Release(child_obj_msg);
+    }
+    rtMessage_SetMessage(msg,"ChildObjects",obj_msg);
+     rtMessage_Release(obj_msg);
+}
+void ObjectappendToMessage(rbusObject_t obj, rtMessage msg)
+{
+    int numChild = 0;
+    rbusObject_t child;
+#if DEBUG_SERIALIZER
+    RBUSLOG_INFO("> object add name=%s type=%d", rbusObject_GetName(obj), rbusObject_GetType(obj));
+#endif
+    printf("> object add name=%s type=%d", rbusObject_GetName(obj), rbusObject_GetType(obj));
+    rtMessage prop_msg;
+    rtMessage_Create(&prop_msg);
+    rtMessage_SetString(prop_msg,"object_name",rbusObject_GetName(obj));
+    rtMessage_SetInt32(prop_msg, "type",rbusObject_GetType(obj));
+    child = rbusObject_GetChildren(obj);
+    while(child)
+    {
+       numChild++;
+       child = rbusObject_GetNext(child);
+    }
+    rtMessage_SetInt32(prop_msg, "childCount", numChild);
+    rbusPropertyList_appendToMessage(rbusObject_GetProperties(obj), prop_msg);
+
+    rtMessage_AddMessage(msg,"Objects",prop_msg);
+
+    //child = rbusObject_GetChildren(obj);
+    /*while(child)
+    {
+       numChild++;
+       child = rbusObject_GetNext(child);
+    }*/
+#if DEBUG_SERIALIZER
+    RBUSLOG_INFO("> object add numChild=%d", numChild);
+#endif
+    rtMessage_Release(prop_msg);
+
+    if (numChild)
+    {
+        rtMessage child_obj_msg;
+        rtMessage_Create(&child_obj_msg);
+        child = rbusObject_GetChildren(obj);
+        while(child)
+        {
+            ObjectappendToMessage(child, child_obj_msg);/*object child object*/
+            child = rbusObject_GetNext(child);
+        }
+        rtMessage_AddMessage(prop_msg,"Objects",child_obj_msg);
+        rtMessage_Release(child_obj_msg);
+    }
+}
 void ObjectappendToMessage(rbusObject_t obj, rtMessage msg)
 {
     int numChild = 0;
@@ -1183,7 +1426,7 @@ void ObjectappendToMessage(rbusObject_t obj, rtMessage msg)
     }
 }
 
-
+#endif
 #if 0
 void ObjectappendToMessage(rbusObject_t obj, rtMessage msg)
 {
@@ -1230,8 +1473,8 @@ void ObjectappendToMessage(rbusObject_t obj, rtMessage msg)
         child = rbusObject_GetNext(child);
     }
 }
-
 #endif
+#if 0
 void rbusObject_initFromMessage(rbusObject_t* obj, rtMessage msg)
 {
     char const* name = NULL;
@@ -1289,6 +1532,21 @@ void rbusObject_initFromMessage(rbusObject_t* obj, rtMessage msg)
         rtMessage_GetInt32(item, "type", &type);
 	printf("ChildCoint:%d,type:%d\n",numChild,type);
 	rbusPropertyList_initFromMessage(&prop, item);
+	while(--numChild >= 0)
+	{
+		rtMessage childmsg;
+		rbusObject_t next;
+		rtMessage_GetMessage(item,"ChildObjects",&childmsg);
+		rbusObject_initFromMessage(&next,childmsg);/*object child object*/
+		if(children == NULL)
+			children = next;
+		if(previous != NULL)
+		{
+			rbusObject_SetNext(previous, next);
+			rbusObject_Release(next);
+		}
+		previous = next;
+	}
 	if(type == RBUS_OBJECT_MULTI_INSTANCE)
 		rbusObject_InitMultiInstance(obj, name);
 	else
@@ -1298,11 +1556,14 @@ void rbusObject_initFromMessage(rbusObject_t* obj, rtMessage msg)
 	rbusProperty_Release(prop);
 	rbusObject_SetChildren(*obj, children);
 	rbusObject_Release(children);
+	printf("Line:%d, func:%s\n", __LINE__,__func__);
+	//rbusObject_fwrite(*obj, 1, stdout);
     }
 
 #if DEBUG_SERIALIZER
     RBUSLOG_INFO("> object pop numChild=%d", numChild);
 #endif
+#if 0
     while(--numChild >= 0)
     {
         rbusObject_t next;
@@ -1316,7 +1577,7 @@ void rbusObject_initFromMessage(rbusObject_t* obj, rtMessage msg)
         }
         previous = next;
      } 
-
+#endif
     /*if(type == RBUS_OBJECT_MULTI_INSTANCE)
         rbusObject_InitMultiInstance(obj, name);
     else
@@ -1327,7 +1588,70 @@ void rbusObject_initFromMessage(rbusObject_t* obj, rtMessage msg)
     rbusObject_SetChildren(*obj, children);
     rbusObject_Release(children);*/
 }
+#endif
+#if 0
+void rbusObject_initFromMessage(rbusObject_t* obj, rtMessage msg)
+{
+    char const* name = NULL;
+    int type = 0;
+    int numChild = 0;
+    rbusProperty_t prop;
+    rbusObject_t children=NULL, previous=NULL;
 
+    rtMessage_GetString(msg,"object_name",&name);
+    rtMessage_GetInt32(msg, "type", &type);
+#if DEBUG_SERIALIZER
+    RBUSLOG_INFO("> object pop name=%s type=%d", name, type);
+#endif
+    rbusPropertyList_initFromMessage(&prop, msg);
+     rtMessage_GetInt32(msg, "childCount",&numChild);
+#if DEBUG_SERIALIZER
+    RBUSLOG_INFO("> object pop numChild=%d", numChild);
+#endif
+    rtMessage child_msg;
+    rtMessage_GetMessage(msg, "ChildObjects", &child_msg);
+    for(int i = 0; i < numChild; ++i)
+    {
+        rtMessage item;
+        rtMessage_GetMessageItem(child_msg, "Objects", i, &item);
+        rbusObject_t next;
+        rbusObject_initFromMessage(&next, item);/*object child object*/
+        if(children == NULL)
+            children = next;
+        if(previous != NULL)
+        {
+            rbusObject_SetNext(previous, next);
+            rbusObject_Release(next);
+        }
+        previous = next;
+    }
+
+    if(type == RBUS_OBJECT_MULTI_INSTANCE)
+        rbusObject_InitMultiInstance(obj, name);
+    else
+        rbusObject_Init(obj, name);
+
+    rbusObject_SetProperties(*obj, prop);
+    rbusProperty_Release(prop);
+    rbusObject_SetChildren(*obj, children);
+    rbusObject_Release(children);
+}
+
+void rbusObjectList_initFromMessage(rbusObject_t* obj, rtMessage msg)
+{
+    int len;
+    rtMessage_GetArrayLength(msg, "Objects", &len);
+    rtMessage child_msg;
+    rtMessage_Create(&child_msg);
+    for(int i = 0; i < len; ++i)
+    {
+        rtMessage item;
+        rtMessage_GetMessageItem(child_msg, "Objects", i, &item);
+        rbusObject_initFromMessage(&obj, item);
+        rtMessage_Release(item);
+    }
+}
+#endif
 void rbusValue_appendToMessage_1(char const* name, rbusValue_t value, rtMessage msg)
 {
     rbusValueType_t type = RBUS_NONE;
@@ -1712,8 +2036,8 @@ void rbusEventData_initFromMessage(rbusEvent_t* event, rbusFilter_t* filter,
     //rtMessage m;
     //err = rtMessage_GetMessage(msg,"Objects",&m);
     //if(err == RT_OK)    
-         rbusObject_initFromMessage(&data, msg);
-
+         //rbusObject_initFromMessage(&data, msg);
+         rbusObjectList_initFromMessage(&data, msg);
     printf("Line:%d, func:%s\n",__LINE__,__func__);
     //rbusObject_initFromMessage(&data, msg);
     rtMessage_GetInt32(msg, MESSAGE_FIELD_EVENT_HAS_FILTER, &hasFilter);
@@ -3281,7 +3605,8 @@ static int _method_callback_handler(rbusHandle_t handle, rtMessage request, rtMe
     rtMessage_GetInt32(request, "inparams", &hasInParam);
     if (hasInParam)
     {
-        rbusObject_initFromMessage(&inParams, request);
+        //rbusObject_initFromMessage(&inParams, request);
+	rbusObjectList_initFromMessage(&inParams, request);
     }
     else
     {
@@ -5587,11 +5912,11 @@ rbusError_t rbusElementInfo_get(
             rtMessage_ToString(msg, &ptr2, &length2);
             printf("rbusElementInfo_get_1\t:%.*s\n", length2, ptr2);
             free(ptr2);
-                    //rtMessage_GetString(response, "name",(char const**)&(*elemInfo)[i].name);
+                    rtMessage_GetString(msg, "name",(char const**)&(*elemInfo)[i].name);
                     rtMessage_GetInt32(msg, "type",(int32_t*)&(*elemInfo)[i].type);
                     rtMessage_GetInt32(msg, "access",(int32_t*)&(*elemInfo)[i].access);
-                    //(*elemInfo)[i].name = strdup((*elemInfo)[i].name);
-                    //(*elemInfo)[i].component = strdup(destinations[d]);
+                    (*elemInfo)[i].name = strdup((*elemInfo)[i].name);
+                    (*elemInfo)[i].component = strdup(destinations[d]);
                     //RBUSLOG_DEBUG("adding name %s", (*elemInfo)[i].name);
 		    printf("adding name %s\n", (*elemInfo)[i].name);
 
@@ -6820,7 +7145,8 @@ rbusError_t rbusMethod_InvokeInternal(
     rtMessage_GetInt32(response, "response",&returnCode);
     legacyRetCode = (rbusLegacyReturn_t)returnCode;
 
-    rbusObject_initFromMessage(outParams, response);
+    //rbusObject_initFromMessage(outParams, response);
+    rbusObjectList_initFromMessage(outParams, response);
     if(legacyRetCode > RBUS_LEGACY_ERR_SUCCESS)
     {
         returnCode = CCSPError_to_rbusError(legacyRetCode);
