@@ -109,6 +109,7 @@ void rbusBuffer_Write(rbusBuffer_t buff, void const* data, int len)
     VERIFY_NULL(buff);
     VERIFY_NULL(data);
     rbusBuffer_Reserve(buff, len);
+    printf("\nBuffer Data:%s\n",(const char*)data);
     memcpy(buff->data + buff->posWrite, data, len);
     buff->posWrite += len;
 }

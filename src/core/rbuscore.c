@@ -720,12 +720,6 @@ static rbusCoreError_t send_subscription_request(const char * object_name, const
         timeout_ms = TIMEOUT_VALUE_FIRE_AND_FORGET;
     ret = rbus_invokeRemoteMethod(object_name, (activate? METHOD_SUBSCRIBE : METHOD_UNSUBSCRIBE),
             request, timeout_ms, &internal_response);
-               char* p = NULL;
-                uint32_t len = 0;
-
-                rtMessage_ToString(internal_response, &p, &len);
-                printf("\tInternalResponse:%.*s\n", len, p);
-                free(p);
     if(RBUSCORE_SUCCESS == ret)
     {
         rtError extract_ret;
@@ -1252,6 +1246,7 @@ static rbusCoreError_t rbus_sendMessage(rtMessage msg, const char * destination,
     }
     rtMessage_ToByteArray(msg, &data, &dataLength);
     ret = rtConnection_SendBinaryDirect(g_connection, data, dataLength, destination, sender);
+    free(data);
     return translate_rt_error(ret);
 }
 
@@ -2373,6 +2368,7 @@ rbusCoreError_t rbus_sendResponse(const rtMessageHeader* hdr, rtMessage response
             RBUSCORELOG_ERROR("Failed to send async response. Error code: 0x%x", err);
         }
         rtMessage_Release(response);
+	free(data);
     }
     return err == RT_OK ? RBUSCORE_SUCCESS : RBUSCORE_ERROR_GENERAL;
 }

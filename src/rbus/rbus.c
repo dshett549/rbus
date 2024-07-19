@@ -483,7 +483,9 @@ void rbusObject_initFromMessage(rbusObject_t* obj, rtMessage msg)
             rbusObject_Release(next);
         }
         previous = next;
+        rtMessage_Release(item);
     }
+    rtMessage_Release(child_msg);
 
     if(type == RBUS_OBJECT_MULTI_INSTANCE)
         rbusObject_InitMultiInstance(obj, name);
@@ -506,8 +508,8 @@ void rbusObjectList_initFromMessage(rbusObject_t* obj, rtMessage msg)
     free(ptr2);
     rtMessage_GetArrayLength(msg, "Objects", &len);
     printf("len:%d\n",len);
-    rtMessage child_msg;
-    rtMessage_Create(&child_msg);
+   // rtMessage child_msg;
+   // rtMessage_Create(&child_msg);
     for(int i = 0; i < len; ++i)
     {
         rtMessage item;
@@ -633,13 +635,14 @@ rbusError_t rbusValue_initFromMessage_1(rbusValue_t* value, rtMessage msg)
 		    //rtError err = RT_OK;
                     rtMessage_GetBinaryData(msg, "value", (void**)&data, &length);
 		    printf("Line:%d,func:%s\n",__LINE__,__func__);
-                    //char* p = NULL;
-                    //uint32_t len = 0;
+                    char* p = NULL;
+                    uint32_t len = 0;
 
-                    /*rtMessage_ToString(msg, &p, &len);
+                    rtMessage_ToString(msg, &p, &len);
                     printf("\tmsg:%.*s\n", len, p);
                     free(p);
-                    printf("err:%d\n", err);
+                    /*printf("err:%d\n", err);
+		    rtMessage_GetBinaryData(msg, "value", (void**)&data, &length);
                     if(data)
                            printf("###############HiData:%s\n",(char*)data);
                     printf("###############################length:%d\n",length);
@@ -714,6 +717,7 @@ rbusError_t rbusValue_initFromMessage(rbusValue_t* value, rtMessage msg)
             rbusValue_SetObject(*value, obj);
             rbusObject_fwrite(obj, 1, stdout);
             rbusObject_Release(obj);
+	    rtMessage_Release(m);
         }
         else
         if(type == RBUS_PROPERTY)
@@ -727,6 +731,7 @@ rbusError_t rbusValue_initFromMessage(rbusValue_t* value, rtMessage msg)
             rbusValue_SetProperty(*value, prop);
 	    //printf("line:%d.Func:%s\n",__LINE__,__func__);
             rbusProperty_Release(prop);
+	    rtMessage_Release(m);
         }
         else
         {
@@ -906,6 +911,7 @@ rbusError_t rbusProperty_initFromMessage_2(rbusProperty_t* property, rtMessage m
 	    err= rbusValue_initFromMessage(&value, msg);
 	    //printf("line:%d,func:%s\n",__LINE__,__func__);
 	    rbusProperty_SetValue(*property, value);
+	    rbusValue_Release(value);
        /*if(first == NULL)
             previous = property;
         if(previous != NULL)
@@ -951,6 +957,9 @@ rbusError_t rbusProperty_initFromMessage_1(rbusProperty_t* property, rtMessage m
 	    err= rbusValue_initFromMessage(&value, propmsg);
 	    //printf("line:%d,func:%s\n",__LINE__,__func__);
 	    rbusProperty_SetValue(property, value);
+	    rbusValue_Release(value);
+            rtMessage_Release(m);
+	    rtMessage_Release(propmsg);
        if(first == NULL)
             previous = property;
         if(previous != NULL)
@@ -1048,10 +1057,10 @@ void rbusPropertyList_appendToMessage(rbusProperty_t prop, rtMessage msg)
     {
         rtMessage m;
         rtMessage_Create (&m);
-	rbusValue_t val = rbusProperty_GetValue(prop);
+	/*rbusValue_t val = rbusProperty_GetValue(prop);
         char *buff = NULL;
         char *svalue = rbusValue_ToDebugString(val, buff, sizeof(buff));
-	printf("Value:%s\n", svalue);
+	printf("Value:%s\n", svalue);*/
         rbusValue_appendToMessage_1(rbusProperty_GetName(prop), rbusProperty_GetValue(prop), m);
         rtMessage_SetMessage(mParent, rbusProperty_GetName(prop), m);
 	rtMessage_Release(m);
@@ -1177,6 +1186,8 @@ void rbusPropertyList_initFromMessage(rbusProperty_t* prop, rtMessage msg)
 	}
 	rbusValue_Release(value);
 	previous = prop;
+	rtMessage_Release(m);
+	rtMessage_Release(propmsg);
     }
 
         /*rbusProperty_initFromMessage(&prop, m);
@@ -1655,8 +1666,6 @@ void rbusObjectList_initFromMessage(rbusObject_t* obj, rtMessage msg)
 void rbusValue_appendToMessage_1(char const* name, rbusValue_t value, rtMessage msg)
 {
     rbusValueType_t type = RBUS_NONE;
-    rtMessage message;
-    rtMessage_Create(&message);
     //rtMessage_SetString(msg, "name", name);
     if(value)
         type = rbusValue_GetType(value);
@@ -1684,15 +1693,13 @@ void rbusValue_appendToMessage_1(char const* name, rbusValue_t value, rtMessage 
     }
     else if(type == RBUS_PROPERTY)
     {
-	rtMessage m1,m2;
+	rtMessage m1;
 	rtMessage_Create(&m1);
-	rtMessage_Create(&m2);
         rtMessage_SetInt32(m1,"type", type);
-        rbusPropertyList_appendToMessage(rbusValue_GetProperty(value), m2);
-        rtMessage_SetMessage(msg, "value", m2);
+        rbusPropertyList_appendToMessage(rbusValue_GetProperty(value), m1);
+        rtMessage_SetMessage(msg, "value", m1);
         //rtMessage_SetMessage(msg, name, m1);
 	rtMessage_Release(m1);
-	rtMessage_Release(m2);
     }
     else
     {
@@ -1740,7 +1747,7 @@ void rbusValue_appendToMessage_1(char const* name, rbusValue_t value, rtMessage 
 
                 rtMessage_ToString(msg, &b_ptr, &leng);
                 printf("\tSetBool:%.*s\n", leng, b_ptr);
-                //free(b_ptr);
+                free(b_ptr);
                 break;
             default:
             {
@@ -1781,9 +1788,9 @@ void rbusValue_appendToMessage(char const* name, rbusValue_t value, rtMessage ms
 	rtMessage_Create(&objmsg);
 	printf("LINE:%d,Fun:%s\n",__LINE__,__func__);
         ObjectappendToMessage(rbusValue_GetObject(value), objmsg);
-	                char *buff1 = NULL;
+	                /*char *buff1 = NULL;
                 char *svalue1 = rbusValue_ToDebugString(value, buff1, sizeof(buff1));
-                printf("Appendsvalue1 = %s\n", svalue1);
+                printf("Appendsvalue1 = %s\n", svalue1);*/
         rtMessage_SetMessage(m,"value",objmsg);
                 char* p = NULL;
                 uint32_t len1 = 0;
@@ -1912,7 +1919,7 @@ void rbusValue_appendToMessage(char const* name, rbusValue_t value, rtMessage ms
 
                 rtMessage_ToString(m, &b_ptr, &leng);
                 printf("\tSetBool:%.*s\n", leng, b_ptr);
-                //free(b_ptr);
+                free(b_ptr);
 		break;
             /*case RBUS_DATETIME:
                 rtMessage_SetBytes(msg, rbusValue_GetV(value), rbusValue_GetL(value));
@@ -1924,6 +1931,7 @@ void rbusValue_appendToMessage(char const* name, rbusValue_t value, rtMessage ms
                     buff = rbusValue_GetV(value);
                     len = rbusValue_GetL(value);
                 }
+	        printf("Buffer:%s\n",(const char*)buff);
                 rtMessage_AddBinaryData(m, "value",buff, len);
                 /*void const* buff = NULL;
                 uint32_t len = 0;
@@ -4363,8 +4371,9 @@ rbusError_t rbus_close(rbusHandle_t handle)
 
     componentName = handleInfo->componentName;
     handleInfo->componentName=NULL;
+    ERROR_CHECK(pthread_mutex_destroy(&handleInfo->handle_eventSubsMutex));
+    ERROR_CHECK(pthread_mutex_destroy(&handleInfo->handle_subsMutex));
     rbusHandleList_Remove(handleInfo);
-
     if(rbusHandleList_IsEmpty())
     {
         RBUSLOG_DEBUG("(%s): closing broker connection", componentName);
@@ -4385,8 +4394,6 @@ rbusError_t rbus_close(rbusHandle_t handle)
 
         _rbus_open_pre_initialize(false);
     }
-    ERROR_CHECK(pthread_mutex_destroy(&handleInfo->handle_eventSubsMutex));
-    ERROR_CHECK(pthread_mutex_destroy(&handleInfo->handle_subsMutex));
 
     UnlockMutex();
 
@@ -4669,10 +4676,9 @@ rbusError_t rbus_get(rbusHandle_t handle, char const* name, rbusValue_t* value)
             if(1/*valSize*/)
             {
                 char const *buff = NULL;
-		rtMessage m;
-		rtMessage_Create(&m);
                 //rtMessage_GetMessage(response, "Parameters",&m);
 		for(int i=0; i<valSize; i++){
+                    rtMessage m;
                     rtMessage_GetItemName(response, "Parameters",i,&buff);
                     rtMessage_GetMessage(response, "Parameters", &m);
 		    rtMessage propmsg;
@@ -4690,6 +4696,8 @@ rbusError_t rbus_get(rbusHandle_t handle, char const* name, rbusValue_t* value)
                         RBUSLOG_WARN("Requested param: [%s], Received Param: [%s]", name, buff);
                         errorcode = RBUS_ERROR_INVALID_RESPONSE_FROM_DESTINATION;
                     }
+		    rtMessage_Release(propmsg);
+		    rtMessage_Release(m);
 		}
             }
         }
@@ -4759,6 +4767,8 @@ rbusError_t _getExt_response_parser(rtMessage response, int *numValues, rbusProp
                     rbusProperty_Release(tmpProperties);
                     last = tmpProperties;
                 }
+		rtMessage_Release(m);
+		rtMessage_Release(propMsg);
             }
         }
     }
@@ -5734,7 +5744,7 @@ rbusError_t rbusTable_getRowNames(
                 }
             }
             printf("Line:%d,FUNC:%s\n",__LINE__,__func__);
-	    rtMessage row_msg;
+	    /*rtMessage row_msg;
             rtMessage_GetMessage(response,"Rows",&row_msg);
             printf("Line:%d,FUNC:%s\n",__LINE__,__func__);
            char* ptr1 = NULL;
@@ -5743,7 +5753,7 @@ rbusError_t rbusTable_getRowNames(
             rtMessage_ToString(row_msg, &ptr1, &length1);
             printf("\tRowMsg:%.*s\n", length1, ptr1);
             free(ptr1);
-            printf("Line:%d,FUNC:%s\n",__LINE__,__func__);
+            printf("Line:%d,FUNC:%s\n",__LINE__,__func__);*/
 	    int32_t len;
 	    rtMessage_GetArrayLength(response, "Rows", &len);
             for(i = 0; i < len; ++i)
@@ -5766,6 +5776,7 @@ rbusError_t rbusTable_getRowNames(
                     tmpNames[i].next = &tmpNames[i+1];
                 else
                     tmpNames[i].next = NULL;
+		rtMessage_Release(item);
             }
 
             *rowNames = tmpNames;
@@ -5917,9 +5928,10 @@ rbusError_t rbusElementInfo_get(
                     rtMessage_GetInt32(msg, "access",(int32_t*)&(*elemInfo)[i].access);
                     (*elemInfo)[i].name = strdup((*elemInfo)[i].name);
                     (*elemInfo)[i].component = strdup(destinations[d]);
-                    //RBUSLOG_DEBUG("adding name %s", (*elemInfo)[i].name);
-		    printf("adding name %s\n", (*elemInfo)[i].name);
-
+                    RBUSLOG_DEBUG("adding name %s", (*elemInfo)[i].name);
+		    //printf("adding name %s\n", (*elemInfo)[i].name);
+                    rtMessage_Release(tableMsg);
+		    rtMessage_Release(msg);
                 }
             }
             else

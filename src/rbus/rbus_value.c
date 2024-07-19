@@ -595,7 +595,9 @@ void rbusValue_SetString(rbusValue_t v, char const* s)
 void rbusValue_SetBytes(rbusValue_t v, uint8_t const* p, int len)
 {
     VERIFY_NULL(v);
+    printf("SetBytes len:%d, *p:%s\n", len, (const char*)p);
     /*see comment in rbusValue_SetString*/
+    //if(p == NULL || (strcmp((const char*)p,"")==0))
     if(p == NULL)
     {
         rbusValue_FreeInternal(v);
