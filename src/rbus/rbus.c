@@ -653,23 +653,10 @@ rbusError_t rbusValue_initFromMessage_1(rbusValue_t* value, rtMessage msg)
                     rbusValue_SetTLV(*value, type, length, data);
                     break;*/
                 default:
-                    printf("Calling GetBinaryDATA\n");
-                    rtMessage valmsg = NULL;
-                    rtMessage_GetMessage(msg,"value",&valmsg);
-                    if(valmsg!= NULL)
-                    {
-                        char* p = NULL;
-			uint32_t len =0;
-                        rtMessage_ToString(valmsg, &p, &len);
-			printf("########P:%s, len:%d\n",(const char*)p, len);
+		   {
                             rtMessage_GetBinaryData(msg, "value", (void**)&data, &length);
 			    printf("@@@@@@@Data:%s\n",(const char*)data);
-                            if(strstr((const char*)data,"{}"))
-                               rbusValue_SetString(*value, "");
-                              // rbusValue_SetTLV(*value, type, 2, "\"\"");
-			    else
                                rbusValue_SetTLV(*value, type, length, data);
-			free(p);
                     }
 		    break;
 #if 0
@@ -898,38 +885,25 @@ rbusError_t rbusValue_initFromMessage(rbusValue_t* value, rtMessage msg)
                     rbusValue_SetTLV(*value, type, length, data);
                     break;*/
                 default:
+		{
 #if 1
-                    printf("Calling GetBinaryDATA\n");
-                    rtMessage valmsg = NULL;
-                    rtMessage_GetMessage(msg,"value",&valmsg);
-                    if(valmsg!= NULL)
-                    {
-			    char* strings[3] = {
-				    "short string",
-				    "",/*empty*/
-			    };
-			    char* p = NULL;
-                        uint32_t len =0;
-                        rtMessage_ToString(valmsg, &p, &len);
-                        printf("########P1:%s, len:%d\n",(const char*)p, len);
-                            rtMessage_GetBinaryData(msg, "value", (void**)&data, &length);
-			    if(data == NULL){
-				    printf("@@@@@Data is NULL\n");
+		    printf("Calling GetBinaryDATA\n");
+		    char* strings[3] = {
+			    "short string",
+			    "",/*empty*/
+		    };
+		    rtMessage_GetBinaryData(msg, "value", (void**)&data, &length);
+		    if(data == NULL){
+			    printf("@@@@@Data is NULL\n");
 
-                            //printf("@@@@@@@Data:%s\n",(const char*)data);
-                            //if(strstr((const char*)data,"{}"))
-                               //rbusValue_SetString(*value, "");
-			       //rbusValue_SetBytes(*value, "", 0);
-			       rbusValue_SetBytes(*value, (uint8_t*)strings[1], strlen(strings[1]));
-                               //rbusValue_t v = *value;
-			       //v->type = RBUS_BYTES;
-			    }
-                              // rbusValue_SetTLV(*value, type, 2, "\"\"");
-                            else
-                               rbusValue_SetTLV(*value, type, length, data);
-                        free(p);
-                    }
-                    break;
+			    rbusValue_SetBytes(*value, (uint8_t*)strings[1], strlen(strings[1]));
+		    }
+		    else
+			    rbusValue_SetTLV(*value, type, length, data);
+                    if(data)
+                        free((void*)data);
+	        }
+	        break;
 #else
 		    printf("Calling GetBinaryDATA\n");
 		    printf("MSG:%p\n",msg);
