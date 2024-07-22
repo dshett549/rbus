@@ -1067,6 +1067,12 @@ rbusCoreError_t rbus_pushObj(const char * object_name, rtMessage message, int ti
             RBUSCORELOG_ERROR("%s.", stringify(RBUSCORE_ERROR_MALFORMED_RESPONSE));
             ret = RBUSCORE_ERROR_MALFORMED_RESPONSE;
         }
+	                    char* p = NULL;
+                uint32_t len = 0;
+
+                rtMessage_ToString(response, &p, &len);
+                printf("\trbus_push_obj:%.*s\n", len, p);
+                free(p);
         rtMessage_Release(response);
     }
     return ret;

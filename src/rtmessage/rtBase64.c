@@ -167,7 +167,7 @@ rtError rtBase64_encode(const void * in, const unsigned int in_size, unsigned ch
         rtLog_Error("Cannot encode more than %d bytes as binary data. Request for %d bytes is denied.", RBUS_BINARY_DATA_SIZE_LIMIT, in_size);
         return RT_ERROR;
     }*/
-
+    printf("\nEncodeIn_Size:%d\n",in_size);
     unsigned int last_group_len = in_size % 3;
 
     /*Allocate memory for the output*/
@@ -186,6 +186,7 @@ rtError rtBase64_encode(const void * in, const unsigned int in_size, unsigned ch
     unsigned int temp_size = in_size - last_group_len;
     unsigned int read_index  = 0;
     unsigned int write_index  = 0;
+    printf("\nTempsize:%d\n", temp_size);
     while(read_index < temp_size)
     {
         write_buff[write_index++] = base64_lookup_table[(read_buff[read_index] >> 2)]; 
@@ -226,13 +227,20 @@ rtError rtBase64_encode(const void * in, const unsigned int in_size, unsigned ch
     }
     write_buff[write_index] = '\0';
     *out = write_buff;
+    printf("\nEncode write_buff%s\n",write_buff);
+    printf("\nwrite_index:%d\n", write_index);
     return RT_OK;
 }
 
 rtError rtBase64_decode(const unsigned char * in, const unsigned int in_size,  void ** out, unsigned int *out_size)
 {
     if(in_size == 0){
+         //char *write_buff = (char *) rt_try_malloc(sizeof(char));
+	 //write_buff[0] = '\0';
+	 //strcpy(write_buff,"");
 	 *out = NULL;
+	 //*out_size = 1;
+	 //*write_buff = NULL;
 	 return RT_OK;
     }
     /*if(RBUS_BASE64_DATA_SIZE_LIMIT < in_size)
@@ -301,5 +309,6 @@ rtError rtBase64_decode(const unsigned char * in, const unsigned int in_size,  v
         return RT_ERROR;
     }
     *out = write_buff;
+    //free(write_buff);
     return RT_OK;
 }

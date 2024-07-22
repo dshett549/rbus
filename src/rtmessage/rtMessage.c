@@ -344,10 +344,12 @@ rtMessage_GetBinaryData(rtMessage message, char const* name, void ** ptr, uint32
     //printf("line:%d,func:%s\n",__LINE__,__func__);
     const unsigned char * value;
     value = (unsigned char *)p->valuestring;
-    //printf("BEFORE_DECODE_GEtBinData:%s\n",value);
+    printf("BEFORE_DECODE_GEtBinData:%s\n",value);
     //size_t len = strlen((const char*) value);
     //unsigned char** ptr1 = NULL;
 	//if(RT_OK == rtBase64_decode((const char*)value, len, (unsigned char**)&ptr1, (size_t*)&size))
+//     if(len == 0)
+//	     return RT_FAIL;
         if(RT_OK == rtBase64_decode(value, strlen((const char *)value), ptr, size))
 	{
            //printf("AFTER_DECODE_GetBinData:%s, size:%ld\n",(const char*)ptr, (size_t)size);
@@ -544,18 +546,29 @@ rtMessage_AddBinaryData(rtMessage message, char const* name, void const * ptr, c
 {
   unsigned char * encoded_string = NULL;
   uint32_t encoded_string_size = 0;
-
+  if (size == 0)
+  {
+	  rtMessage_SetString(message, name,"");
+	  printf("\n@@@@@@ In Size 0\n");
+	  char* ptr2 = NULL;
+	  uint32_t length2 = 0;
+	  rtMessage_ToString(message, &ptr2, &length2);
+	  printf("\t @@@@@@@@@ AddBin:%.*s\n", length2, ptr2);
+	  free(ptr2);
+	  return RT_OK;
+  }      
   //if(RT_OK == rtBase64_encode((const char *)ptr, (size_t)size, (char**)&encoded_string, (size_t)encoded_string_size))
   if(RT_OK == rtBase64_encode((const unsigned char *)ptr, size, &encoded_string, &encoded_string_size))
   {
     rtMessage_SetString(message, name, (char *)encoded_string);
+#if 0
       char* ptr2 = NULL;
     uint32_t length2 = 0;
-
     rtMessage_ToString(message, &ptr2, &length2);
-    //printf("\tAddBin:%.*s\n", length2, ptr2);
+    printf("\tAddBin:%.*s\n", length2, ptr2);
     free(ptr2);
     //printf("ENCOED STRING:%s\n", (char*)encoded_string);
+#endif
     free(encoded_string);
     return RT_OK;
   }
