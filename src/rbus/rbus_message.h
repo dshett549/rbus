@@ -29,6 +29,7 @@
 #ifndef RBUS_MESSAGE_H
 #define RBUS_MESSAGE_H
 
+#include "rtMessage.h"
 #include "rbus.h"
 
 #ifdef __cplusplus
@@ -73,7 +74,7 @@ typedef enum
  */
 typedef void (*rbusMessageHandler_t)(
     rbusHandle_t handle, 
-    rbusMessage_t* message, 
+    rtMessage_t* message, 
     void* userData);
 
 /** @fn rbusError_t rbusMessage_AddPrivateListener(
