@@ -2454,10 +2454,10 @@ static int _method_callback_handler(rbusHandle_t handle, rtMessage request, rtMe
 
     rbusValue_Init(&value1);
     rbusValue_Init(&value2);
-    char* ptr = NULL; 
-    uint32_t len2 = 0; 
-    rtMessage_ToString(request, &ptr, &len2); 
-    printf("method_callback:%.*s\n", len1, ptr); 
+    char* ptr = NULL;
+    uint32_t len2 = 0;
+    rtMessage_ToString(request, &ptr, &len2);
+    printf("method_callback:%.*s\n", len1, ptr);
     free(ptr);
     rtMessage_GetInt32(request, "sessionId", &sessionId);
     rtMessage_GetString(request, "method_name",&methodName);
