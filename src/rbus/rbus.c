@@ -2456,7 +2456,7 @@ static int _method_callback_handler(rbusHandle_t handle, rtMessage request, rtMe
     rbusValue_Init(&value2);
     rtMessage_GetInt32(request, "sessionId", &sessionId);
     rtMessage_GetString(request, "method_name",&methodName);
-    rtMessage_GetInt32(request, "inparams", &hasInParam);
+    rtMessage_GetInt32(request, "hasInParam", &hasInParam);
     if (hasInParam)
     {
 	rbusObjectList_initFromMessage(&inParams, request);
@@ -5871,12 +5871,12 @@ rbusError_t rbusMethod_InvokeInternal(
 
     if(inParams)
     {
-        rtMessage_SetInt32(request, "inParams",1);
+        rtMessage_SetInt32(request, "hasInParam",1);
         rbusObject_appendToMessage(inParams, request);
     }
     else
     {
-        rtMessage_SetInt32(request, "inParams",0);
+        rtMessage_SetInt32(request, "hasInParam",0);
     }
 
     /* Find direct connection status */
