@@ -2461,7 +2461,7 @@ static int _method_callback_handler(rbusHandle_t handle, rtMessage request, rtMe
     RBUSLOG_WARN("################METHOD_CALLBACK:%.*s#########", len2, ptr);
     free(ptr);
     rtMessage_GetInt32(request, "sessionId", &sessionId);
-    rtMessage_GetString(request, "method_name",&methodName);
+    rtMessage_GetString(request, "_method",&methodName);
     rtMessage_GetInt32(request, "hasInParam", &hasInParam);
     if (hasInParam)
     {
@@ -5873,7 +5873,7 @@ rbusError_t rbusMethod_InvokeInternal(
 
     rtMessage_Create(&request);
     rtMessage_SetInt32(request, "sessionId",0);/*TODO: this should be the session ID*/
-    rtMessage_SetString(request, "method_name",methodName); /*TODO: do we need to append the name as well as pass the name as the 1st arg to rbus_invokeRemoteMethod2 ?*/
+    rtMessage_SetString(request, "_method",methodName); /*TODO: do we need to append the name as well as pass the name as the 1st arg to rbus_invokeRemoteMethod2 ?*/
 
     if(inParams)
     {
