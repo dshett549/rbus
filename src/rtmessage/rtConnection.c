@@ -818,14 +818,12 @@ rtConnection_SendRequest(rtConnection con, rtMessage const req, char const* topi
     return rtErrorFromErrno(EINVAL);
 
   rtMessage_ToByteArrayWithSize(req, &p, DEFAULT_SEND_BUFFER_SIZE, &n);
-  rtLog_Error("Line:%d, Func:%s", __LINE__,__func__);
   err = rtConnection_SendRequestInternal(con, p, n, topic, &resMsg, timeout, 0);
   rtMessage_FreeByteArray(p);
   if(err == RT_OK)
   {
     rtMessage_FromBytes(res, resMsg->data, resMsg->dataLength);
     rtMessageInfo_Release(resMsg);
-    rtLog_Error("Line:%d, Func:%s", __LINE__,__func__);
   }
   return err;
 }
@@ -1004,7 +1002,6 @@ rtConnection_SendRequestInternal(rtConnection con, uint8_t const* pReq, uint32_t
     if (err != RT_OK)
     {
       ret = err;
-      rtLog_Error("Line:%d, Func:%s", __LINE__,__func__);
       goto dequeue_and_continue;
     }
     pthread_mutex_unlock(&con->mutex);
@@ -1014,7 +1011,6 @@ rtConnection_SendRequestInternal(rtConnection con, uint8_t const* pReq, uint32_t
       rtTime_t timeout_time;
       rtTime_Later(NULL, timeout, &timeout_time);
       ret = rtSemaphore_TimedWait(queue_entry.sem, &timeout_time); //TODO: handle wake triggered by signals
-      rtLog_Error("Line:%d, Func:%s", __LINE__,__func__);
     }
     else
     {
@@ -1039,7 +1035,6 @@ rtConnection_SendRequestInternal(rtConnection con, uint8_t const* pReq, uint32_t
             if(timeout <= diff_ms)
             {
               ret = RT_ERROR_TIMEOUT;
-               rtLog_Error("Line:%d, Func:%s", __LINE__,__func__);
               break;
             }
             else
@@ -1052,7 +1047,6 @@ rtConnection_SendRequestInternal(rtConnection con, uint8_t const* pReq, uint32_t
         else if(err == RT_NO_CONNECTION)
         {
           ret = err;
-           rtLog_Error("Line:%d, Func:%s", __LINE__,__func__);
           goto dequeue_and_continue;
         }
         else
@@ -1079,7 +1073,6 @@ rtConnection_SendRequestInternal(rtConnection con, uint8_t const* pReq, uint32_t
         else
         {
           /*caller must call rtMessageInfo_Release on the response*/
-           rtLog_Error("Line:%d, Func:%s", __LINE__,__func__);
           *res = queue_entry.response; 
         }
       }
@@ -1104,7 +1097,6 @@ dequeue_and_continue:
 
     if(ret == RT_ERROR_TIMEOUT)
     {
-      rtLog_Error("Line:%d, Func:%s", __LINE__,__func__);
       rtLog_Info("rtConnection_SendRequest TIMEOUT");
     }
 
@@ -1125,7 +1117,6 @@ rtConnection_SendInternal(rtConnection con, uint8_t const* buff, uint32_t n, cha
   uint32_t message_length;
 
   if (!con){
-    rtLog_Error("Line:%d, Func:%s", __LINE__,__func__);
     return rtErrorFromErrno(EINVAL);
   }
 
@@ -1139,7 +1130,6 @@ rtConnection_SendInternal(rtConnection con, uint8_t const* buff, uint32_t n, cha
   if (rtConnection_IsSecure(con) && topic[0] != '_')
   { 
     rtLog_Debug("encrypting message");
-    rtLog_Error("Line:%d, Func:%s", __LINE__,__func__);
     if ((err = rtCipher_Encrypt(con->cipher, buff, n, con->encryption_buffer, RTMSG_SEND_BUFFER_SIZE, &message_length)) != RT_OK)
     {
       rtLog_Error("failed to encrypt payload, not sending message. %s", rtStrError(err));
@@ -1164,19 +1154,16 @@ rtConnection_SendInternal(rtConnection con, uint8_t const* buff, uint32_t n, cha
 
   if(topic)
   {
-    rtLog_Error("Line:%d, Func:%s", __LINE__,__func__);
     strncpy(header.topic, topic, RTMSG_HEADER_MAX_TOPIC_LENGTH-1);
     header.topic_length = strlen(header.topic);
   }
   if (reply_topic)
   {
-    rtLog_Error("Line:%d, Func:%s", __LINE__,__func__);
     strncpy(header.reply_topic, reply_topic, RTMSG_HEADER_MAX_TOPIC_LENGTH-1);
     header.reply_topic_length = strlen(reply_topic);
   }
   else
   {
-    rtLog_Error("Line:%d, Func:%s", __LINE__,__func__);
     header.reply_topic[0] = '\0';
     header.reply_topic_length = 0;
   }
@@ -1193,7 +1180,6 @@ rtConnection_SendInternal(rtConnection con, uint8_t const* buff, uint32_t n, cha
        header.T2 = T2;
        header.T3 = T3;
        header.T4 = send_time.tv_sec;
-       rtLog_Error("Line:%d, Func:%s", __LINE__,__func__);
   }
 #else
   (void)T1;
@@ -1211,7 +1197,6 @@ rtConnection_SendInternal(rtConnection con, uint8_t const* buff, uint32_t n, cha
   err = rtMessageHeader_Encode(&header, con->send_buffer);
   if (err != RT_OK)
   {
-    rtLog_Error("Line:%d, Func:%s", __LINE__,__func__);
     con->send_buffer_in_use=0;
     return err;
   }
@@ -1227,11 +1212,9 @@ rtConnection_SendInternal(rtConnection con, uint8_t const* buff, uint32_t n, cha
     {
       if (bytes_sent == -1)
       {
-        rtLog_Error("Line:%d, Func:%s", __LINE__,__func__);
         err = rtErrorFromErrno(errno);
       }
       else{
-        rtLog_Error("Line:%d, Func:%s", __LINE__,__func__);
         err = RT_FAIL;
       }
     }
@@ -1239,13 +1222,11 @@ rtConnection_SendInternal(rtConnection con, uint8_t const* buff, uint32_t n, cha
     if (err != RT_OK && rtConnection_ShouldReregister(err))
     {
       con->send_buffer_in_use=0;
-      rtLog_Error("Line:%d, Func:%s", __LINE__,__func__);
       return RT_NO_CONNECTION;
     }
   }
   while ((err != RT_OK) && (num_attempts++ < max_attempts));
   con->send_buffer_in_use=0;
-  rtLog_Error("Line:%d, Func:%s", __LINE__,__func__);
   return err;
 }
 
