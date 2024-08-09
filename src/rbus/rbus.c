@@ -2015,7 +2015,7 @@ static void _get_callback_handler (rbusHandle_t handle, rtMessage request, rtMes
             for(i = 0; i < paramSize; i++)
             {
                 parameterName = NULL;
-                rtMessage_GetString(request, "paramName",&parameterName);
+                rtMessage_GetString(request, "ParamName",&parameterName);
 
                 RBUSLOG_DEBUG("Param Name [%d]:[%s]", i, parameterName);
 
@@ -2745,7 +2745,7 @@ static void _create_direct_connection_callback_handler (rbusHandle_t handle, rtM
 
     rtMessage_GetString(request,"name", &consumerName);
     rtMessage_GetInt32(request, "pid",&consumerPID);
-    rtMessage_GetString(request, "paramName",&paramName);
+    rtMessage_GetString(request, "ParamName",&paramName);
     rtMessage_GetString(request, "conf",&consumerToBrokerConf);
 
     rtMessage_Create(response);
@@ -2820,7 +2820,7 @@ static void _close_direct_connection_callback_handler (rbusHandle_t handle, rtMe
     char const* paramName = NULL;
 
     rtMessage_GetString(request, "name",&consumerName);
-    rtMessage_GetString(request, "paramName",&paramName);
+    rtMessage_GetString(request, "ParamName",&paramName);
 
     rtMessage_Create(response);
 
@@ -3471,7 +3471,7 @@ rbusError_t rbus_get(rbusHandle_t handle, char const* name, rbusValue_t* value)
     rtMessage_SetString(request, "name",handleInfo->componentName);
     /* Param Size */
     rtMessage_SetInt32(request, "size",(int32_t)1);
-    rtMessage_SetString(request, "paramName",name);
+    rtMessage_SetString(request, "ParamName",name);
 
     RBUSLOG_DEBUG("Calling rbus_invokeRemoteMethod2 for [%s]", name);
 
@@ -3480,8 +3480,17 @@ rbusError_t rbus_get(rbusHandle_t handle, char const* name, rbusValue_t* value)
 
     if (NULL == myConn)
         myConn = handleInfo->m_connection;
-
+    char* ptr = NULL;
+    uint32_t len1 = 0; 
+    rtMessage_ToString(request, &ptr, &len1); 
+    printf("GetValues:%.*s\n", len1, ptr); 
+    free(ptr);
     err = rbus_invokeRemoteMethod2(myConn, name, METHOD_GETPARAMETERVALUES, request, rbusConfig_ReadGetTimeout(), &response);
+    char* ptr1 = NULL;
+    uint32_t len2 = 0; 
+    rtMessage_ToString(response, &ptr1, &len2); 
+    printf("GetResponse:%.*s\n", len2, ptr1); 
+    free(ptr1);
     if(err != RBUSCORE_SUCCESS)
     {
         RBUSLOG_ERROR("get by %s failed; Received error %d from RBUS Daemon for the object %s", handle->componentName, err, name);
