@@ -3483,13 +3483,13 @@ rbusError_t rbus_get(rbusHandle_t handle, char const* name, rbusValue_t* value)
     char* ptr = NULL;
     uint32_t len1 = 0; 
     rtMessage_ToString(request, &ptr, &len1); 
-    printf("GetValues:%.*s\n", len1, ptr); 
+    RBUSLOG_ERROR("GetValues:%.*s", len1, ptr); 
     free(ptr);
     err = rbus_invokeRemoteMethod2(myConn, name, METHOD_GETPARAMETERVALUES, request, rbusConfig_ReadGetTimeout(), &response);
     char* ptr1 = NULL;
     uint32_t len2 = 0; 
     rtMessage_ToString(response, &ptr1, &len2); 
-    printf("GetResponse:%.*s\n", len2, ptr1); 
+    RBUSLOG_ERROR("GetResponse:%.*s", len2, ptr1); 
     free(ptr1);
     if(err != RBUSCORE_SUCCESS)
     {
