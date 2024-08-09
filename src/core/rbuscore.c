@@ -1103,8 +1103,19 @@ rbusCoreError_t rbus_invokeRemoteMethod2(rtConnection myConn, const char * objec
         rtMessage_Create(&out);
 
     _rbusMessage_SetMetaInfo(out, method, traceParent, traceState);
+    char* ptr = NULL;
+    uint32_t len = 0; 
+    rtMessage_ToString(out, &ptr, &len); 
+    RBUSCORELOG_ERROR("OUT:%.*s", len, ptr); 
+    free(ptr);
+
 
     err = rtConnection_SendRequest(myConn, out, object_name, in, timeout_millisecs);
+    char* ptr1 = NULL;
+    uint32_t len1 = 0; 
+    rtMessage_ToString(in, &ptr1, &len1); 
+    RBUSCORELOG_ERROR("IN:%.*s", len, ptr1); 
+    free(ptr1);
     if(RT_OK != err)
     {
         if(RT_OBJECT_NO_LONGER_AVAILABLE == err)
