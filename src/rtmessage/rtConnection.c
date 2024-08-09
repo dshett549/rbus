@@ -1002,6 +1002,7 @@ rtConnection_SendRequestInternal(rtConnection con, uint8_t const* pReq, uint32_t
     if (err != RT_OK)
     {
       ret = err;
+      rtLog_Error("func:%s,line:%d",__func__,__LINE__);
       goto dequeue_and_continue;
     }
     pthread_mutex_unlock(&con->mutex);
@@ -1079,6 +1080,7 @@ rtConnection_SendRequestInternal(rtConnection con, uint8_t const* pReq, uint32_t
       else
       {
         /*For some reason, we unblocked, but there's no data.*/
+         rtLog_Error("func:%s,line:%d",__func__,__LINE__);
         ret = RT_ERROR;
       }
     }
@@ -1097,6 +1099,7 @@ dequeue_and_continue:
 
     if(ret == RT_ERROR_TIMEOUT)
     {
+       rtLog_Error("func:%s,line:%d",__func__,__LINE__);
       rtLog_Info("rtConnection_SendRequest TIMEOUT");
     }
 
