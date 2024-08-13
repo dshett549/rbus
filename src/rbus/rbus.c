@@ -1993,7 +1993,11 @@ static void _get_callback_handler (rbusHandle_t handle, rtMessage request, rtMes
     char const *pCompName = NULL;
     rbusProperty_t* properties = NULL;
     rbusGetHandlerOptions_t options;
-
+        char* p = NULL;
+        uint32_t len1 = 0;
+        rtMessage_ToString(request, &p, &len1);
+        RBUS_LOG_ERR("_getcallb:%.*s",len1, p);
+        free(p);
     memset(&options, 0, sizeof(options));
     rtMessage_GetString(request, "name",&pCompName);
     rtMessage_GetInt32(request, "size",&paramSize);
