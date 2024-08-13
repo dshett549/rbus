@@ -422,7 +422,7 @@ void _rbusMessage_SetMetaInfo(rtMessage m,
   char const *ot_parent,
   char const *ot_state)
 {
-  rtMessage_SetString(m, "_method",method_name);
+  rtMessage_SetString(m, "method_name",method_name);
   rtMessage_SetString(m, "parent",ot_parent);
   rtMessage_SetString(m, "state",ot_state);
 
@@ -439,7 +439,7 @@ void _rbusMessage_GetMetaInfo(rtMessage m,
   char const **ot_parent,
   char const **ot_state)
 {
-  rtMessage_GetString(m, "_method",method_name);
+  rtMessage_GetString(m, "method_name",method_name);
   rtMessage_GetString(m, "parent",ot_parent);
   rtMessage_GetString(m, "state",ot_state);
 
