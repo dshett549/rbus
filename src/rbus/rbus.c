@@ -1995,7 +1995,7 @@ static void _get_callback_handler (rbusHandle_t handle, rtMessage request, rtMes
     rbusGetHandlerOptions_t options;
 
     memset(&options, 0, sizeof(options));
-    rtMessage_GetString(request, "compname",&pCompName);
+    rtMessage_GetString(request, "name",&pCompName);
     rtMessage_GetInt32(request, "size",&paramSize);
     RBUSLOG_DEBUG("Param Size [%d]", paramSize);
 
@@ -2015,7 +2015,7 @@ static void _get_callback_handler (rbusHandle_t handle, rtMessage request, rtMes
             for(i = 0; i < paramSize; i++)
             {
                 parameterName = NULL;
-                rtMessage_GetString(request, "ParamName",&parameterName);
+                rtMessage_GetString(request, "paramName",&parameterName);
 
                 RBUSLOG_DEBUG("Param Name [%d]:[%s]", i, parameterName);
 
@@ -3471,7 +3471,7 @@ rbusError_t rbus_get(rbusHandle_t handle, char const* name, rbusValue_t* value)
     rtMessage_SetString(request, "name",handleInfo->componentName);
     /* Param Size */
     rtMessage_SetInt32(request, "size",(int32_t)1);
-    rtMessage_SetString(request, "ParamName",name);
+    rtMessage_SetString(request, "paramName",name);
 
     RBUSLOG_DEBUG("Calling rbus_invokeRemoteMethod2 for [%s]", name);
 
