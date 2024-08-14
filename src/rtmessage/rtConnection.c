@@ -819,6 +819,7 @@ rtConnection_SendRequest(rtConnection con, rtMessage const req, char const* topi
 
   rtMessage_ToByteArrayWithSize(req, &p, DEFAULT_SEND_BUFFER_SIZE, &n);
   err = rtConnection_SendRequestInternal(con, p, n, topic, &resMsg, timeout, 0);
+   rtLog_Error("func:%s,line:%d",__func__,__LINE__);
   rtMessage_FreeByteArray(p);
   if(err == RT_OK)
   {
@@ -982,7 +983,7 @@ rtConnection_SendRequestInternal(rtConnection con, uint8_t const* pReq, uint32_t
     rtError err;
     uint32_t sequence_number;
     rtListItem listItem;
-
+    
     pid_t tid = syscall(__NR_gettid);
 
     pthread_mutex_lock(&con->mutex);
@@ -1012,6 +1013,7 @@ rtConnection_SendRequestInternal(rtConnection con, uint8_t const* pReq, uint32_t
       rtTime_t timeout_time;
       rtTime_Later(NULL, timeout, &timeout_time);
       ret = rtSemaphore_TimedWait(queue_entry.sem, &timeout_time); //TODO: handle wake triggered by signals
+      rtLog_Error("func:%s,line:%d",__func__,__LINE__);
     }
     else
     {
@@ -1027,6 +1029,7 @@ rtConnection_SendRequestInternal(rtConnection con, uint8_t const* pReq, uint32_t
           if(0 < sem_value)
           {
             ret = RT_OK;
+             rtLog_Error("func:%s,line:%d",__func__,__LINE__);
             break;
           }
           else
@@ -1036,11 +1039,13 @@ rtConnection_SendRequestInternal(rtConnection con, uint8_t const* pReq, uint32_t
             if(timeout <= diff_ms)
             {
               ret = RT_ERROR_TIMEOUT;
+               rtLog_Error("func:%s,line:%d",__func__,__LINE__);
               break;
             }
             else
             {
               timeout -= diff_ms;
+               rtLog_Error("func:%s,line:%d",__func__,__LINE__);
               //rtLog_Info("Retry nested call with timeout of %d ms", timeout);
             }
           }
@@ -1048,12 +1053,14 @@ rtConnection_SendRequestInternal(rtConnection con, uint8_t const* pReq, uint32_t
         else if(err == RT_NO_CONNECTION)
         {
           ret = err;
+           rtLog_Error("func:%s,line:%d",__func__,__LINE__);
           goto dequeue_and_continue;
         }
         else
         {
           rtLog_Error("Nested read failed.");
           ret = RT_ERROR;
+           rtLog_Error("func:%s,line:%d",__func__,__LINE__);
           break;
         }
       } while(RT_OK == err);
@@ -1068,13 +1075,14 @@ rtConnection_SendRequestInternal(rtConnection con, uint8_t const* pReq, uint32_t
         if(queue_entry.response->header.flags & rtMessageFlags_Undeliverable)
         {
           rtMessageInfo_Release(queue_entry.response);
-
+           rtLog_Error("func:%s,line:%d",__func__,__LINE__);
           ret = RT_OBJECT_NO_LONGER_AVAILABLE;
         }
         else
         {
           /*caller must call rtMessageInfo_Release on the response*/
           *res = queue_entry.response; 
+           rtLog_Error("func:%s,line:%d",__func__,__LINE__);
         }
       }
       else
@@ -1093,8 +1101,11 @@ dequeue_and_continue:
     if(ret == RT_NO_CONNECTION)
     {
       ret = rtConnection_ConnectAndRegister(con, &con->sender_reconnect_time);
-      if(ret == RT_OK)
+         rtLog_Error("func:%s,line:%d",__func__,__LINE__);
+      if(ret == RT_OK){
+         rtLog_Error("func:%s,line:%d",__func__,__LINE__);
         continue;
+      }
     }
 
     if(ret == RT_ERROR_TIMEOUT)
