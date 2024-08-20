@@ -824,6 +824,7 @@ rtConnection_SendRequest(rtConnection con, rtMessage const req, char const* topi
   if(err == RT_OK)
   {
     rtMessage_FromBytes(res, resMsg->data, resMsg->dataLength);
+    rtLog_Error("func:%s,line:%d",__func__,__LINE__);
     rtMessageInfo_Release(resMsg);
   }
   return err;
