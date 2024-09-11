@@ -1415,7 +1415,6 @@ exit_1:
     HANDLE_EVENTSUBS_MUTEX_UNLOCK(handleInfo);
     return RBUSCORE_SUCCESS;
 }
-
 static void _set_callback_handler (rbusHandle_t handle, rbusMessage request, rbusMessage *response)
 {
     rbusError_t rc = 0;
@@ -3759,6 +3758,83 @@ rbusError_t rbus_getUint (rbusHandle_t handle, char const* paramName, unsigned i
 rbusError_t rbus_getStr (rbusHandle_t handle, char const* paramName, char** paramVal)
 {
     return rbus_getByType(handle, paramName, paramVal, RBUS_STRING);
+}
+
+rbusError_t rbus_setCommit(rbusHandle_t handle, char const* name, rbusSetOptions_t* opts)
+{
+    rbusError_t errorcode = RBUS_ERROR_INVALID_INPUT;
+    rbusCoreError_t err = RBUSCORE_SUCCESS;
+    VERIFY_HANDLE(handle);
+    rbusMessage setRequest, setResponse;
+    struct _rbusHandle* handleInfo = (struct _rbusHandle*) handle;
+
+    VERIFY_NULL(handle);
+    VERIFY_NULL(name);
+
+    if (handleInfo->m_handleType != RBUS_HWDL_TYPE_REGULAR)
+        return RBUS_ERROR_INVALID_HANDLE;
+
+    rbusMessage_Init(&setRequest);
+    /* Set the Session ID first */
+    if ((opts) && (opts->sessionId != 0))
+        rbusMessage_SetInt32(setRequest, opts->sessionId);
+    else
+        rbusMessage_SetInt32(setRequest, 0);
+
+    /* Set the Component name that invokes the set */
+    rbusMessage_SetString(setRequest, handleInfo->componentName);
+    /* Set the Size of params */
+    rbusMessage_SetInt32(setRequest, 1);
+
+    /* Set the Commit value; FIXME: Should we use string? */
+    rbusMessage_SetString(setRequest, (!opts || opts->commit) ? "TRUE" : "FALSE");
+    /* Find direct connection status */
+    rtConnection myConn = rbuscore_FindClientPrivateConnection(name);
+
+    if (NULL == myConn)
+        myConn = handleInfo->m_connection;
+
+    if((err = rbus_invokeRemoteMethod2(myConn, name, METHOD_COMMIT, setRequest, rbusConfig_ReadSetTimeout(), &setResponse)) != RBUSCORE_SUCCESS)
+    {
+        RBUSLOG_ERROR("set by %s failed; Received error %d from RBUS Daemon for the object %s", handle->componentName, err, name);
+        errorcode = rbusCoreError_to_rbusError(err);
+    }
+    else
+    {
+        rbusLegacyReturn_t legacyRetCode = RBUS_LEGACY_ERR_FAILURE;
+        int ret = -1;
+        char const* pErrorReason = NULL;
+        rbusMessage_GetInt32(setResponse, &ret);
+
+        RBUSLOG_DEBUG("Response from the remote method is [%d]!", ret);
+        errorcode = (rbusError_t) ret;
+        legacyRetCode = (rbusLegacyReturn_t) ret;
+        char* p = NULL;
+
+        uint32_t len1 = 0;
+
+        rbusMessage_ToDebugString(setResponse, &p, &len1);
+
+        printf("\tMessageSetc:%.*s\n", len1, p);
+        if((errorcode == RBUS_ERROR_SUCCESS) || (legacyRetCode == RBUS_LEGACY_ERR_SUCCESS))
+        {
+            errorcode = RBUS_ERROR_SUCCESS;
+            RBUSLOG_DEBUG("Successfully Set the Value");
+        }
+        else
+        {
+            rbusMessage_GetString(setResponse, &pErrorReason);
+            RBUSLOG_WARN("Failed to Set the Value for %s", pErrorReason);
+            if(legacyRetCode > RBUS_LEGACY_ERR_SUCCESS)
+            {
+                errorcode = CCSPError_to_rbusError(legacyRetCode);
+            }
+        }
+
+        /* Release the reponse message */
+        rbusMessage_Release(setResponse);
+    }
+    return errorcode;
 }
 
 rbusError_t rbus_set(rbusHandle_t handle, char const* name,rbusValue_t value, rbusSetOptions_t* opts)

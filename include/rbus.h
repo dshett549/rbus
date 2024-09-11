@@ -1899,7 +1899,8 @@ rbusError_t rbus_openDirect(rbusHandle_t handle, rbusHandle_t* myDirectHandle, c
  */
 rbusError_t rbus_closeDirect(rbusHandle_t handle);
 /** @} */
-
+rbusError_t rbus_setCommit(rbusHandle_t handle, char const* name, rbusSetOptions_t* opts);
+rbusError_t rbus_getHealth(rbusHandle_t handle, char const* paramName, int *health);
 #ifdef __cplusplus
 }
 #endif
