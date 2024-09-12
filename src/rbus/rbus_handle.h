@@ -118,6 +118,7 @@ struct _rbusHandle
   pthread_mutex_t       handle_eventSubsMutex;
   pthread_mutex_t       handle_subsMutex;
   rtConnection          m_connectionParent;
+  void*                 user_data;
 };
 
 bool rbusHandleList_IsValidHandle(struct _rbusHandle* handle);
