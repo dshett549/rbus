@@ -3103,8 +3103,6 @@ rbusError_t rbus_close(rbusHandle_t handle)
     }
 
     componentName = handleInfo->componentName;
-    handleInfo->componentName=NULL;
-    rbusHandleList_Remove(handleInfo);
 
     if(rbusHandleList_IsEmpty())
     {
@@ -3128,7 +3126,8 @@ rbusError_t rbus_close(rbusHandle_t handle)
     }
     ERROR_CHECK(pthread_mutex_destroy(&handleInfo->handle_eventSubsMutex));
     ERROR_CHECK(pthread_mutex_destroy(&handleInfo->handle_subsMutex));
-
+    handleInfo->componentName=NULL;
+    rbusHandleList_Remove(handleInfo);
     UnlockMutex();
 
     if(ret == RBUS_ERROR_SUCCESS)
