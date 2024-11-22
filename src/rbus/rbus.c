@@ -1415,27 +1415,29 @@ exit_1:
     HANDLE_EVENTSUBS_MUTEX_UNLOCK(handleInfo);
     return RBUSCORE_SUCCESS;
 }
-
 static void _set_callback_handler (rbusHandle_t handle, rbusMessage request, rbusMessage *response)
 {
     rbusError_t rc = 0;
+    rbusError_t err = 0;
     int sessionId = 0;
     int numVals = 0;
     int loopCnt = 0;
+    int cnt = 0;
     char* pCompName = NULL;
     char* pIsCommit = NULL;
     bool isCommit = false;
     char const* pFailedElement = NULL;
     rbusProperty_t* pProperties = NULL;
+    rbusProperty_t* tmpProperties = NULL;
     struct _rbusHandle* handleInfo = (struct _rbusHandle*)handle;
     rbusSetHandlerOptions_t opts;
+    rbusGetHandlerOptions_t options;
 
     memset(&opts, 0, sizeof(opts));
 
     rbusMessage_GetInt32(request, &sessionId);
     rbusMessage_GetString(request, (char const**) &pCompName);
     rbusMessage_GetInt32(request, &numVals);
-
     if(numVals > 0)
     {
         /* Update the Get Handler input options */
@@ -1443,7 +1445,7 @@ static void _set_callback_handler (rbusHandle_t handle, rbusMessage request, rbu
         opts.requestingComponent = pCompName;
 
         elementNode* el = NULL;
-
+        tmpProperties = (rbusProperty_t*)rt_try_malloc(numVals*sizeof(rbusProperty_t));
         pProperties = (rbusProperty_t*)rt_try_malloc(numVals*sizeof(rbusProperty_t));
         if(pProperties)
         {
@@ -1462,7 +1464,6 @@ static void _set_callback_handler (rbusHandle_t handle, rbusMessage request, rbu
             */
             if (strncasecmp("TRUE", pIsCommit, 4) == 0)
                 isCommit = true;
-
             for (loopCnt = 0; loopCnt < numVals; loopCnt++)
             {
                 /* Retrive the element node */
@@ -1470,6 +1471,17 @@ static void _set_callback_handler (rbusHandle_t handle, rbusMessage request, rbu
                 el = retrieveInstanceElementEx(handle, handleInfo->elementRoot, paramName, true);
                 if(el != NULL)
                 {
+                    if(el->cbTable.getHandler)
+                    {
+                        rbusProperty_Init(&tmpProperties[cnt], paramName, NULL);
+                        ELM_PRIVATE_LOCK(el);
+
+                        rc = el->cbTable.getHandler(handle, tmpProperties[cnt], &options);
+                        ELM_PRIVATE_UNLOCK(el);
+                        cnt++;
+                    }
+                    else
+                        RBUSLOG_WARN("get Failed for %s; It is a write only parameter",paramName);
                     if(el->cbTable.setHandler)
                     {
                         if(isCommit && loopCnt == numVals -1)
@@ -1482,6 +1494,14 @@ static void _set_callback_handler (rbusHandle_t handle, rbusMessage request, rbu
                         {
                             RBUSLOG_WARN("Set Failed for %s; Component Owner returned Error", paramName);
                             pFailedElement = paramName;
+                            for(int j = 0; j < cnt; j++)
+                            {
+                                ELM_PRIVATE_LOCK(el);
+                                err = el->cbTable.setHandler(handle, tmpProperties[j], &opts);
+                                ELM_PRIVATE_UNLOCK(el);
+                            }
+			    if(err != RBUS_ERROR_SUCCESS)
+                                RBUSLOG_WARN("Reverting back to initial values failed with err:%d", err);
                             break;
                         }
                         else
@@ -1523,9 +1543,18 @@ static void _set_callback_handler (rbusHandle_t handle, rbusMessage request, rbu
 exit:
     rbusMessage_Init(response);
     rbusMessage_SetInt32(*response, (int) rc);
+
+    if (rc == 0)
+    {
+        rbusMessage_SetInt32(*response, cnt);
+        for(loopCnt =0; loopCnt < cnt; loopCnt++)
+        {
+            rbusPropertyList_appendToMessage(tmpProperties[loopCnt], *response);
+        }
+    }
+
     if (pFailedElement)
         rbusMessage_SetString(*response, pFailedElement);
-
     if(pProperties)
     {
         for (loopCnt = 0; loopCnt < numVals; loopCnt++)
@@ -1534,10 +1563,16 @@ exit:
         }
         free(pProperties);
     }
-
+    if(tmpProperties)
+    {
+        for (loopCnt = 0; loopCnt < cnt; loopCnt++)
+        {
+            rbusProperty_Release(tmpProperties[loopCnt]);
+        }
+        free(tmpProperties);
+    }
     return;
 }
-
 /*
     convert a registration element name to a instance name based on the instance numbers in the original 
     partial path query
@@ -3954,16 +3989,25 @@ rbusError_t rbus_setMulti(rbusHandle_t handle, int numProps, rbusProperty_t prop
 {
     rbusError_t errorcode = RBUS_ERROR_INVALID_INPUT;
     rbusCoreError_t err = RBUSCORE_SUCCESS;
-    VERIFY_HANDLE(handle);	
+    VERIFY_HANDLE(handle);
     rbusMessage setRequest, setResponse;
     struct _rbusHandle* handleInfo = (struct _rbusHandle*) handle;
     rbusValueType_t type = RBUS_NONE;
     rbusProperty_t current;
-
+    int count, numPrevProps;
+    rbusProperty_t prevProperties = NULL;
+    rbusProperty_t* tmpProperties = NULL;
+    tmpProperties = (rbusProperty_t*)rt_try_malloc(numProps*sizeof(rbusProperty_t));
     VERIFY_NULL(handle);
 
+    if (!tmpProperties) {
+        return RBUS_ERROR_OUT_OF_RESOURCES;
+    }
     if (handleInfo->m_handleType != RBUS_HWDL_TYPE_REGULAR)
+    {
+        free(tmpProperties);
         return RBUS_ERROR_INVALID_HANDLE;
+    }
 
     if (numProps > 0 && properties != NULL)
     {
@@ -3976,6 +4020,7 @@ rbusError_t rbus_setMulti(rbusHandle_t handle, int numProps, rbusProperty_t prop
         pParamNames = rt_try_malloc(sizeof(char*) * numProps);
         if(!pParamNames)
         {
+            free(tmpProperties);
             RBUSLOG_WARN ("Failed to malloc %d property names", numProps);
             return RBUS_ERROR_OUT_OF_RESOURCES;
         }
@@ -3989,6 +4034,7 @@ rbusError_t rbus_setMulti(rbusHandle_t handle, int numProps, rbusProperty_t prop
             {
                 RBUSLOG_DEBUG("Invalid data type passed in one of the data type\n");
                 free(pParamNames);
+                free(tmpProperties);
                 return errorcode;
             }
             current = rbusProperty_GetNext(current);
@@ -3997,6 +4043,7 @@ rbusError_t rbus_setMulti(rbusHandle_t handle, int numProps, rbusProperty_t prop
         {
             RBUSLOG_WARN ("Invalid input: numProps more then actual number of properties.");
             free(pParamNames);
+            free(tmpProperties);
             return RBUS_ERROR_INVALID_INPUT;
         }
 
@@ -4024,6 +4071,7 @@ rbusError_t rbus_setMulti(rbusHandle_t handle, int numProps, rbusProperty_t prop
             if(errorcode == RBUS_ERROR_INVALID_INPUT)
             {
                 free(componentNames);
+                free(tmpProperties);
                 return RBUS_ERROR_INVALID_INPUT;
             }
 
@@ -4032,7 +4080,6 @@ rbusError_t rbus_setMulti(rbusHandle_t handle, int numProps, rbusProperty_t prop
                 char* componentName = NULL;
                 char const* firstParamName = NULL;
                 int batchCount = 0;
-
                 for(i = 0; i < numProps; ++i)
                 {
                     if(componentNames[i])
@@ -4053,7 +4100,6 @@ rbusError_t rbus_setMulti(rbusHandle_t handle, int numProps, rbusProperty_t prop
 
                 if(componentName)
                 {
-
                     rbusMessage_Init(&setRequest);
 
                     /* Set the Session ID first */
@@ -4082,11 +4128,10 @@ rbusError_t rbus_setMulti(rbusHandle_t handle, int numProps, rbusProperty_t prop
                             free(componentNames[i]);
                             componentNames[i] = NULL;
                         }
-                    }  
+                    }
 
                     /* Set the Commit value; FIXME: Should we use string? */
                     rbusMessage_SetString(setRequest, (!opts || opts->commit) ? "TRUE" : "FALSE");
-
                     if((err = rbus_invokeRemoteMethod(firstParamName, METHOD_SETPARAMETERVALUES, setRequest, rbusConfig_ReadSetTimeout(), &setResponse)) != RBUSCORE_SUCCESS)
                     {
                         RBUSLOG_ERROR("set by %s failed; Received error %d from RBUS Daemon for the object %s", handle->componentName, err, firstParamName);
@@ -4098,20 +4143,43 @@ rbusError_t rbus_setMulti(rbusHandle_t handle, int numProps, rbusProperty_t prop
                         rbusLegacyReturn_t legacyRetCode = RBUS_LEGACY_ERR_FAILURE;
                         int ret = -1;
                         rbusMessage_GetInt32(setResponse, &ret);
-
-                        RBUSLOG_DEBUG("Response from the remote method is [%d]!", ret);
+			RBUSLOG_DEBUG("Response from the remote method is [%d]!", ret);
                         errorcode = (rbusError_t) ret;
                         legacyRetCode = (rbusLegacyReturn_t) ret;
-
                         if((errorcode == RBUS_ERROR_SUCCESS) || (legacyRetCode == RBUS_LEGACY_ERR_SUCCESS))
                         {
                             errorcode = RBUS_ERROR_SUCCESS;
                             RBUSLOG_DEBUG("Successfully Set the Value");
+                            rbusMessage_GetInt32(setResponse, &count);
+                            for(int i= 0; i < count; i++)
+                            {
+                                rbusPropertyList_initFromMessage(&tmpProperties[i], setResponse);
+                                if(prevProperties)
+                                   rbusProperty_Append(prevProperties, tmpProperties[i]);
+                                else
+                                   prevProperties = tmpProperties[i];
+                            }
                         }
                         else
                         {
                             rbusMessage_GetString(setResponse, &pErrorReason);
                             RBUSLOG_WARN("Failed to Set the Value for %s", pErrorReason);
+                            rbusSetOptions_t revertOpts = {true,0};
+                            rbusProperty_t first;
+                            first = prevProperties;
+                            numPrevProps = 0;
+                            while(prevProperties)
+                            {
+                                    numPrevProps++;
+                                    prevProperties = rbusProperty_GetNext(prevProperties);
+                            }
+                            prevProperties = first;
+                            rbusError_t result;
+                            result = rbus_setMulti(handle, numPrevProps, prevProperties, &revertOpts);
+                            if(result == RBUS_ERROR_SUCCESS)
+			        RBUSLOG_DEBUG("Successfully reverted back the values");
+                            else
+                                RBUSLOG_WARN("Failed to revert back the initial values");
                             if(legacyRetCode > RBUS_LEGACY_ERR_SUCCESS)
                             {
                                 errorcode = CCSPError_to_rbusError(legacyRetCode);
@@ -4147,6 +4215,7 @@ rbusError_t rbus_setMulti(rbusHandle_t handle, int numProps, rbusProperty_t prop
         if(componentNames)
             free(componentNames);
     }
+    free(tmpProperties);
     return errorcode;
 }
 
