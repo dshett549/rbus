@@ -2245,7 +2245,7 @@ static void _get_parameter_names_handler (rbusHandle_t handle, rtMessage request
     int32_t getRowNamesOnly = 0;
     //int32_t isCcsp = 0;
     elementNode* el = NULL;
-    rtMessage_GetString(request, "tableName", &objName);
+    rtMessage_GetString(request, "elemName", &objName);
     rtMessage_GetInt32(request, "level",&requestedDepth);
     if(rtMessage_GetInt32(request, "row", &getRowNamesOnly) != RT_OK)/*set to 1 by rbusTable_GetRowNames and 0 by rbus_getNames, but unset by ccsp*/
     {
@@ -2293,7 +2293,7 @@ static void _get_parameter_names_handler (rbusHandle_t handle, rtMessage request
         }
 
         rtMessage_SetInt32(*response, "response", RBUS_ERROR_SUCCESS);
-        rtMessage_SetInt32(*response, "rowCount", (int)numRows);
+        rtMessage_SetInt32(*response, "ParamCount", (int)numRows);
 	child = el->child;
 	rtMessage EachRow, rows;
 	rtMessage_Create(&rows);
@@ -2328,7 +2328,7 @@ static void _get_parameter_names_handler (rbusHandle_t handle, rtMessage request
 
         rtMessage_SetInt32(*response, "ParamCount", (int)count);
         _get_parameter_names_recurse(handle, el, NULL, msg, requestedDepth, 0, false);
-	rtMessage_SetMessage(*response, "Tables", msg);
+	rtMessage_SetMessage(*response, "Elements", msg);
 	rtMessage_Release(msg);
     }
     #if 0 //TODO-finish
@@ -2718,7 +2718,7 @@ static void _subscribe_callback_handler (rbusHandle_t handle, rtMessage request,
                     int i = 0;
 
                     rtMessage_Create(&tableRequest);
-                    rtMessage_SetString(tableRequest, "tableName",event_name);
+                    rtMessage_SetString(tableRequest, "elemName",event_name);
                     rtMessage_SetInt32(tableRequest, "level",-1);
                     rtMessage_SetInt32(tableRequest, "row",1);
                     _get_parameter_names_handler(handle, tableRequest, &tableResponse);
@@ -4630,7 +4630,7 @@ rbusError_t rbusTable_getRowNames(
     *rowNames = NULL;
 
     rtMessage_Create(&request);
-    rtMessage_SetString(request, "tableName",tableName);
+    rtMessage_SetString(request, "elemName",tableName);
     rtMessage_SetInt32(request, "level",-1);/*nextLevel*/
     rtMessage_SetInt32(request, "row",1);/*getRowNames*/
 
@@ -4657,7 +4657,7 @@ rbusError_t rbusTable_getRowNames(
 
             errorcode = RBUS_ERROR_SUCCESS;
 
-            rtMessage_GetInt32(response, "rowCount",&count);
+            rtMessage_GetInt32(response, "ParamCount",&count);
             RBUSLOG_DEBUG("getparamnames %s got %d results", tableName, count);
 
             if(count > 0)
@@ -4778,7 +4778,7 @@ rbusError_t rbusElementInfo_get(
     for(d = 0; d < numDestinations; d++)
     {
         rtMessage_Create(&request);
-        rtMessage_SetString(request, "tableName",elemName);
+        rtMessage_SetString(request, "elemName",elemName);
         rtMessage_SetInt32(request, "level",depth);/*depth*/
         rtMessage_SetInt32(request, "row",0);/*not row names*/
 
@@ -4821,10 +4821,10 @@ rbusError_t rbusElementInfo_get(
                 rtMessage msg,tableMsg;
                 for(i = 0; i < count; i++)
                 {
-                    rtMessage_GetItemName(response,"Tables",i,(char const**)&(*elemInfo)[i].name);
-		    rtMessage_GetMessage(response,"Tables",&tableMsg);
+                    rtMessage_GetItemName(response,"Elements",i,(char const**)&(*elemInfo)[i].name);
+		    rtMessage_GetMessage(response,"Elements",&tableMsg);
 		    rtMessage_GetMessage(tableMsg,(*elemInfo)[i].name,&msg);
-                    rtMessage_GetString(msg, "name",(char const**)&(*elemInfo)[i].name);
+                    //rtMessage_GetString(msg, "name",(char const**)&(*elemInfo)[i].name);
                     rtMessage_GetInt32(msg, "type",(int32_t*)&(*elemInfo)[i].type);
                     rtMessage_GetInt32(msg, "access",(int32_t*)&(*elemInfo)[i].access);
                     (*elemInfo)[i].name = strdup((*elemInfo)[i].name);
