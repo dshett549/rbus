@@ -588,6 +588,18 @@ rbusError_t rbusValue_initFromMessage(rbusValue_t* value, rtMessage msg)
 		    rtMessage_GetBool(msg,"value",&b);
                     rbusValue_SetBoolean(*value,b);
 		    break;
+                case RBUS_DATETIME:
+                    char* strings[1] = {
+                            ""/*empty*/
+                    };
+                    rtMessage_GetBinaryData(msg, "value", (void**)&data, &length);
+                    if(data == NULL)
+                            rbusValue_SetBytes(*value, (uint8_t*)strings[0], strlen(strings[0]));
+                    else
+                            rbusValue_SetTLV(*value, type, length, data);
+                    if(data)
+                        free((void*)data);
+                break;
                 default:
 		    char* strings[1] = {
 			    ""/*empty*/
@@ -848,6 +860,14 @@ void rbusValue_appendToMessage_1(char const* name, rbusValue_t value, rtMessage 
             case RBUS_BOOLEAN:
                 rtMessage_SetBool(msg, "value", (double)rbusValue_GetBoolean(value));
                 break;
+            case RBUS_DATETIME:
+                if(value)
+                {
+                    buff = rbusValue_GetV(value);
+                    len = rbusValue_GetL(value);
+                }
+                rtMessage_AddBinaryData(msg, "value",buff, len);
+                break;
             default:
             {
                if(value)
@@ -923,6 +943,14 @@ void rbusValue_appendToMessage(char const* name, rbusValue_t value, rtMessage ms
             case RBUS_BOOLEAN:
 		rtMessage_SetBool(msg, "value", (double)rbusValue_GetBoolean(value));
 		break;
+            case RBUS_DATETIME:
+               if(value)
+                {
+                    buff = rbusValue_GetV(value);
+                    len = rbusValue_GetL(value);
+                }
+                rtMessage_AddBinaryData(msg, "value",buff, len);
+                break;
             default:
             {
                if(value)
@@ -3512,6 +3540,106 @@ rbusError_t rbus_discoverComponentDataElements (rbusHandle_t handle,
 }
 
 //************************* Parameters related Operations *******************//
+rbusError_t TEST_rbus_get(rbusHandle_t handle, char const* name, rbusValue_t* value)
+{
+    rbusError_t errorcode = RBUS_ERROR_SUCCESS;
+    rbusCoreError_t err = RBUSCORE_SUCCESS;
+    VERIFY_HANDLE(handle);
+    rtMessage request, response;
+    int ret = -1;
+    struct _rbusHandle* handleInfo = (struct _rbusHandle*) handle;
+
+    VERIFY_NULL(handleInfo);
+
+    if (handleInfo->m_handleType != RBUS_HWDL_TYPE_REGULAR)
+        return RBUS_ERROR_INVALID_HANDLE;
+
+    /* Is it a valid Query */
+    if (!_is_valid_get_query(name))
+    {
+        RBUSLOG_WARN("This method is only to get Parameters");
+        return RBUS_ERROR_INVALID_INPUT;
+    }
+
+    if (_is_wildcard_query(name))
+    {
+        RBUSLOG_WARN("This method does not support wildcard query");
+        return RBUS_ERROR_ACCESS_NOT_ALLOWED;
+    }
+
+    rtMessage_Create(&request);
+    /* Set the Component name that invokes the set */
+    rtMessage_SetString(request, "name",handleInfo->componentName);
+    /* Param Size */
+    rtMessage_SetInt32(request, "size",(int32_t)1);
+    rtMessage_SetString(request, "paramName",name);
+
+    RBUSLOG_DEBUG("Calling rbus_invokeRemoteMethod2 for [%s]", name);
+
+    /* Find direct connection status */
+    rtConnection myConn = rbuscore_FindClientPrivateConnection(name);
+
+    if (NULL == myConn)
+        myConn = handleInfo->m_connection;
+
+    err = rbus_invokeRemoteMethod2(myConn, name, METHOD_GETPARAMETERVALUES, request, rbusConfig_ReadGetTimeout(), &response);
+    if(err != RBUSCORE_SUCCESS)
+    {
+        RBUSLOG_ERROR("get by %s failed; Received error %d from RBUS Daemon for the object %s", handle->componentName, err, name);
+        errorcode = rbusCoreError_to_rbusError(err);
+    }
+    else
+    {
+        int valSize;
+        rbusLegacyReturn_t legacyRetCode = RBUS_LEGACY_ERR_FAILURE;
+
+        RBUSLOG_DEBUG("Received response for remote method invocation!");
+
+        rtMessage_GetInt32(response, "response",&ret);
+        RBUSLOG_DEBUG("Response from the remote method is [%d]!",ret);
+        errorcode = (rbusError_t) ret;
+        legacyRetCode = (rbusLegacyReturn_t) ret;
+
+        if((errorcode == RBUS_ERROR_SUCCESS) || (legacyRetCode == RBUS_LEGACY_ERR_SUCCESS))
+        {
+            errorcode = RBUS_ERROR_SUCCESS;
+            RBUSLOG_DEBUG("Received valid response!");
+            rtMessage_GetInt32(response, "ParamCount",&valSize);
+            if(1/*valSize*/)
+            {
+                char const *buff = NULL;
+		int len = 0;
+		rtMessage item;
+                 rtMessage_GetArrayLength(response, "Parameters", &len);
+                 for(int i = 0; i < len; ++i)
+		 {
+                     rtMessage_GetMessageItem(response, "Parameters", i, &item);
+		     rtMessage_GetString(item,"ParamName", &buff);
+                     if(buff && (strcmp(name, buff) == 0))
+                     {
+                         rbusValue_initFromMessage(value, item);
+                     }
+                     else
+                     {
+                         RBUSLOG_WARN("Param mismatch!");
+                         RBUSLOG_WARN("Requested param: [%s], Received Param: [%s]", name, buff);
+                         errorcode = RBUS_ERROR_INVALID_RESPONSE_FROM_DESTINATION;
+                     }
+		 rtMessage_Release(item);
+		 }
+            }
+        }
+        else
+        {
+            if(legacyRetCode > RBUS_LEGACY_ERR_SUCCESS)
+            {
+                errorcode = CCSPError_to_rbusError(legacyRetCode);
+            }
+        }
+        rtMessage_Release(response);
+    }
+    return errorcode;
+}
 rbusError_t rbus_get(rbusHandle_t handle, char const* name, rbusValue_t* value)
 {
     rbusError_t errorcode = RBUS_ERROR_SUCCESS;
