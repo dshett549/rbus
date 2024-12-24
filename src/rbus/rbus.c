@@ -552,6 +552,9 @@ rbusError_t rbusValue_initFromMessage(rbusValue_t* value, rtMessage msg)
         {
             int32_t ival;
             double fval;
+            char* strings[1] = {
+                            ""/*empty*/
+                    };
             switch(type)
             {
                 case RBUS_INT16:
@@ -589,9 +592,6 @@ rbusError_t rbusValue_initFromMessage(rbusValue_t* value, rtMessage msg)
                     rbusValue_SetBoolean(*value,b);
 		    break;
                 case RBUS_DATETIME:
-                    char* strings[1] = {
-                            ""/*empty*/
-                    };
                     rtMessage_GetBinaryData(msg, "value", (void**)&data, &length);
                     if(data == NULL)
                             rbusValue_SetBytes(*value, (uint8_t*)strings[0], strlen(strings[0]));
@@ -601,9 +601,6 @@ rbusError_t rbusValue_initFromMessage(rbusValue_t* value, rtMessage msg)
                         free((void*)data);
                 break;
                 default:
-		    char* strings[1] = {
-			    ""/*empty*/
-		    };
 		    rtMessage_GetBinaryData(msg, "value", (void**)&data, &length);
 		    if(data == NULL)
 			    rbusValue_SetBytes(*value, (uint8_t*)strings[0], strlen(strings[0]));
