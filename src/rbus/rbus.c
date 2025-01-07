@@ -2429,7 +2429,7 @@ static int _method_callback_handler(rbusHandle_t handle, rbusMessage request, rb
     }
 }
 
-static void _subscribe_callback_handler (rbusHandle_t handle, rbusMessage request, rbusMessage* response, char const* method)
+void _subscribe_callback_handler (rbusHandle_t handle, rbusMessage request, rbusMessage* response, char const* method)
 {
     const char * sender = NULL;
     const char * event_name = NULL;
