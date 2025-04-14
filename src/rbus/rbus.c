@@ -2600,7 +2600,7 @@ void _subscribe_callback_handler (rbusHandle_t handle, rbusMessage request, rbus
                 RBUSLOG_ERROR("Invalid event_name: %s, Element Table Subscription should end with '.'", event_name);
                 ret = RBUS_ERROR_INVALID_EVENT;
             }
-            if( strcmp(event_name, "Device.DeviceInfo.RollbackTesting.StringParam")==0)
+            if(strcmp(event_name, "Device.DeviceInfo.RollbackTesting.StringParam")==0)
                    int added = strncmp(method, METHOD_TEST_SUBSCRIBE, MAX_METHOD_NAME_LENGTH) == 0 ? 1 : 0;
             else
 		   int added = strncmp(method, METHOD_SUBSCRIBE, MAX_METHOD_NAME_LENGTH) == 0 ? 1 : 0;
