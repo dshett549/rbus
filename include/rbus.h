@@ -2084,6 +2084,9 @@ rbusError_t rbusHandle_ConfigSetMultiTimeout(rbusHandle_t handle, uint32_t timeo
 rbusError_t rbusHandle_ConfigSubscribeTimeout(rbusHandle_t handle, uint32_t timeout);
 /** @} */
 
+rbusError_t rbusHandle_SetUserData(rbusHandle_t handle, void* user_data);
+rbusError_t rbusHandle_GetUserData(rbusHandle_t handle, void** user_data);
+
 #ifdef __cplusplus
 }
 #endif

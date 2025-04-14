@@ -727,8 +727,16 @@ static rbusCoreError_t send_subscription_request(const char * object_name, const
 
     if(timeout_ms <= 0)
         timeout_ms = TIMEOUT_VALUE_FIRE_AND_FORGET;
-    ret = rbus_invokeRemoteMethod(object_name, (activate? METHOD_SUBSCRIBE : METHOD_UNSUBSCRIBE),
+    if( strcmp(event_name, "Device.DeviceInfo.RollbackTesting.StringParam")==0)
+    {
+         ret = rbus_invokeRemoteMethod(object_name, (activate? METHOD_TEST_SUBSCRIBE : METHOD_TEST_UNSUBSCRIBE),
             request, timeout_ms, &internal_response);
+    }
+    else
+    {
+         ret = rbus_invokeRemoteMethod(object_name, (activate? METHOD_SUBSCRIBE : METHOD_UNSUBSCRIBE),
+            request, timeout_ms, &internal_response);
+    }
     if(RBUSCORE_SUCCESS == ret)
     {
         rtError extract_ret;

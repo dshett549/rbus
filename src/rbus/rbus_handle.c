@@ -329,3 +329,19 @@ uint32_t rbusHandle_FetchSubscribeTimeout(rbusHandle_t handle)
     VERIFY_NULL(handle, return 0)
     return handle->timeoutValues.subscribeTimeout;
 }
+
+rbusError_t rbusHandle_SetUserData(rbusHandle_t handle, void* user_data)
+{
+    VERIFY_NULL(handle, return RBUS_ERROR_INVALID_INPUT)
+    handle->user_data = user_data;
+    return RBUS_ERROR_SUCCESS;
+}
+
+rbusError_t rbusHandle_GetUserData(rbusHandle_t handle, void** user_data)
+{
+    VERIFY_NULL(handle, return RBUS_ERROR_INVALID_INPUT)
+    *user_data = handle->user_data;
+    if(user_data)
+	printf("user Data: %s", (char*)user_data);
+    return RBUS_ERROR_SUCCESS;
+}

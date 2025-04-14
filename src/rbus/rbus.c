@@ -2538,11 +2538,12 @@ static int _method_callback_handler(rbusHandle_t handle, rbusMessage request, rb
     }
 }
 
-static void _subscribe_callback_handler (rbusHandle_t handle, rbusMessage request, rbusMessage* response, char const* method)
+void _subscribe_callback_handler (rbusHandle_t handle, rbusMessage request, rbusMessage* response, char const* method)
 {
     const char * sender = NULL;
     const char * event_name = NULL;
     int has_payload = 0;
+    int added = 0;
     rbusMessage payload = NULL;
     int publishOnSubscribe = 0;
     int rawData = 0;
@@ -2600,8 +2601,11 @@ static void _subscribe_callback_handler (rbusHandle_t handle, rbusMessage reques
                 RBUSLOG_ERROR("Invalid event_name: %s, Element Table Subscription should end with '.'", event_name);
                 ret = RBUS_ERROR_INVALID_EVENT;
             }
-
-            int added = strncmp(method, METHOD_SUBSCRIBE, MAX_METHOD_NAME_LENGTH) == 0 ? 1 : 0;
+	    
+            if(strcmp(event_name, "Device.DeviceInfo.RollbackTesting.StringParam")==0)
+                   added = strncmp(method, METHOD_TEST_SUBSCRIBE, MAX_METHOD_NAME_LENGTH) == 0 ? 1 : 0;
+            else
+		   added = strncmp(method, METHOD_SUBSCRIBE, MAX_METHOD_NAME_LENGTH) == 0 ? 1 : 0;
                 
             rbusMessage_GetInt32(request, &publishOnSubscribe);
             rbusMessage_GetInt32(request, &rawData);
@@ -2865,7 +2869,7 @@ static int _callback_handler(char const* destination, char const* method, rbusMe
         rbusMessage_Init(response);
         rbusMessage_SetInt32(*response, RBUS_ERROR_SUCCESS);
     }
-    else if(!strcmp(method, METHOD_SUBSCRIBE) || !strcmp(method, METHOD_UNSUBSCRIBE))
+    else if(!strcmp(method, METHOD_SUBSCRIBE) || !strcmp(method, METHOD_UNSUBSCRIBE) || !strcmp(method, METHOD_TEST_SUBSCRIBE) || !strcmp(method, METHOD_TEST_UNSUBSCRIBE))
     {
         _subscribe_callback_handler (handle, request, response, method);
     }
