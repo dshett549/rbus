@@ -333,15 +333,17 @@ uint32_t rbusHandle_FetchSubscribeTimeout(rbusHandle_t handle)
 rbusError_t rbusHandle_SetUserData(rbusHandle_t handle, void* user_data)
 {
     VERIFY_NULL(handle, return RBUS_ERROR_INVALID_INPUT)
-    handle->user_data = user_data;
+    if(user_data != NULL)
+        handle->user_data = user_data;
     return RBUS_ERROR_SUCCESS;
 }
 
 rbusError_t rbusHandle_GetUserData(rbusHandle_t handle, void** user_data)
 {
     VERIFY_NULL(handle, return RBUS_ERROR_INVALID_INPUT)
-    *user_data = handle->user_data;
-    if(user_data)
+    if(handle->user_data != NULL)
+        *user_data = handle->user_data;
+    if(user_data != NULL)
 	printf("user Data: %s", (char*)user_data);
     return RBUS_ERROR_SUCCESS;
 }
