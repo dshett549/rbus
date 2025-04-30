@@ -4728,13 +4728,13 @@ rbusError_t _setMultiInternal(rbusHandle_t handle, uint32_t numProps, rbusProper
                         {
                             if(pFailedElement)
                             {
-                                rtMessage_GetString(setResponse, "error", &pErrorReason);
+                                rtMessage_GetString(setResponse, "pFailedElement", &pErrorReason);
 				*pFailedElement = strdup((char*)pErrorReason);
                                 RBUSLOG_WARN("Failed to Set the Value For %s", *pFailedElement);
                             }
                             else
                             {
-                                rtMessage_GetString(setResponse, "error", &pErrorReason);
+                                rtMessage_GetString(setResponse, "pFailedElement", &pErrorReason);
                                 RBUSLOG_WARN("Failed to Set the Value for %s", pErrorReason);
                             }
                             if(rollBack)
