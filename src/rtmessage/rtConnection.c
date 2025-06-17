@@ -242,8 +242,15 @@ rtConnection_SendRequestInternal(
   uint32_t nReq, 
   char const* topic,
   rtMessageInfo** resMsg, 
-  int32_t timeout, 
+  uint32_t timeout,
   int flags);
+
+static uint32_t
+rtConnection_GetNextSubscriptionId()
+{
+  static uint32_t next_id = 10000; /* Keeping this number high to avoid conflict with the subscription Id added in rbusSubscriptions_addSubscription() which starts with 1 */
+  return next_id++;
+}
 
 static int GetRunThreadsSync(rtConnection con)
 {
@@ -283,13 +290,15 @@ rtConnection_ConnectAndRegister(rtConnection con, rtTime_t* reconnect_time)
   int first_to_handle = false;
   int is_first_connect = true;
   int reconnect_in_progress = 0;
-  rtTime_t last_reconnect_time = con->reconnect_time;
+  rtTime_t last_reconnect_time;
   char tbuff1[100];
   char tbuff2[100];
   char tbuff3[100];
 
   if (!con)
     return rtErrorFromErrno(EINVAL);
+
+  last_reconnect_time = con->reconnect_time;
 
   if(con->fd != -1)
     is_first_connect = false;
@@ -314,11 +323,11 @@ rtConnection_ConnectAndRegister(rtConnection con, rtTime_t* reconnect_time)
         rtTime_Now(&con->reconnect_time);
       }
     }
-    pthread_mutex_unlock(&con->reconnect_mutex);  
+    pthread_mutex_unlock(&con->reconnect_mutex);
 
-    rtLog_Debug("ConnectAndRegister reconnect state first_to_handle=%d reconnect_in_progress=%d threads_time=[%s] last_reconnect_time=[%s] new_reconnect_time=[%s]", 
-      first_to_handle, reconnect_in_progress, 
-      rtTime_ToString(&con->start_time, tbuff1), 
+    rtLog_Debug("ConnectAndRegister reconnect state first_to_handle=%d reconnect_in_progress=%d threads_time=[%s] last_reconnect_time=[%s] new_reconnect_time=[%s]",
+      first_to_handle, reconnect_in_progress,
+      rtTime_ToString(&con->start_time, tbuff1),
       rtTime_ToString(&last_reconnect_time, tbuff2),
       rtTime_ToString(&con->reconnect_time, tbuff3));
 
@@ -358,7 +367,8 @@ rtConnection_ConnectAndRegister(rtConnection con, rtTime_t* reconnect_time)
   if (fdManip < 0)
     return rtErrorFromErrno(errno);
 
-  setsockopt(con->fd, SOL_TCP, TCP_NODELAY, &i, sizeof(i));
+  if (setsockopt(con->fd, SOL_TCP, TCP_NODELAY, &i, sizeof(i)) < 0)
+    rtLog_Debug("Error setting TCP_NODELAY: %s", strerror(errno));
 
   rtSocketStorage_ToString(&con->remote_endpoint, remote_addr, sizeof(remote_addr), &remote_port);
 
@@ -599,7 +609,7 @@ rtConnection_CreateInternal(rtConnection* con, char const* application_name, cha
 
   if (err == RT_OK)
   {
-    rtConnection_AddListener(c, c->inbox_name, RTCONNECTION_CREATE_EXPRESSION_ID, onDefaultMessage, c);
+    rtConnection_AddListenerWithId(c, c->inbox_name, RTCONNECTION_CREATE_EXPRESSION_ID, onDefaultMessage, c);
     rtConnection_StartThreads(c);
     *con = c;
   }
@@ -800,7 +810,7 @@ rtConnection_SendMessageDirect(rtConnection con, rtMessage msg, char const* topi
 
 rtError
 rtConnection_SendRequest(rtConnection con, rtMessage const req, char const* topic,
-  rtMessage* res, int32_t timeout)
+  rtMessage* res, uint32_t timeout)
 {
   uint8_t* p;
   uint32_t n;
@@ -902,7 +912,7 @@ rtConnection_SendBinaryDirect(rtConnection con, uint8_t const* p, uint32_t n, ch
 
 rtError
 rtConnection_SendBinaryRequest(rtConnection con, uint8_t const* pReq, uint32_t nReq, char const* topic,
-  uint8_t** pRes, uint32_t* nRes, int32_t timeout)
+  uint8_t** pRes, uint32_t* nRes, uint32_t timeout)
 {
   rtError err;
   rtMessageInfo* mi;
@@ -938,7 +948,7 @@ rtConnection_SendBinaryRequest(rtConnection con, uint8_t const* pReq, uint32_t n
 
 rtError
 rtConnection_SendBinaryResponse(rtConnection con, rtMessageHeader const* request_hdr, uint8_t const* p, uint32_t n,
-  int32_t timeout)
+  uint32_t timeout)
 {
   (void) timeout;
   rtError err;
@@ -961,11 +971,10 @@ rtConnection_SendBinaryResponse(rtConnection con, rtMessageHeader const* request
 
 rtError
 rtConnection_SendRequestInternal(rtConnection con, uint8_t const* pReq, uint32_t nReq, char const* topic,
-  rtMessageInfo** res, int32_t timeout, int flags)
+  rtMessageInfo** res, uint32_t timeout, int flags)
 {
   if (!con)
     return rtErrorFromErrno(EINVAL);
-
   rtTime_Now(&con->sender_reconnect_time);
   while(1)
   {
@@ -1024,7 +1033,7 @@ rtConnection_SendRequestInternal(rtConnection con, uint8_t const* pReq, uint32_t
           else
           {
             //It's a response to a different message. Adjust the timeout value and try again.
-            int diff_ms = rtTime_Elapsed(&start_time, NULL);
+            uint32_t diff_ms = rtTime_Elapsed(&start_time, NULL);
             if(timeout <= diff_ms)
             {
               ret = RT_ERROR_TIMEOUT;
@@ -1223,7 +1232,13 @@ rtConnection_SendInternal(rtConnection con, uint8_t const* buff, uint32_t n, cha
 }
 
 rtError
-rtConnection_AddListener(rtConnection con, char const* expression, uint32_t expressionId, rtMessageCallback callback, void* closure)
+rtConnection_AddListener(rtConnection con, char const* expression, rtMessageCallback callback, void* closure)
+{
+    return rtConnection_AddListenerWithId(con, expression, rtConnection_GetNextSubscriptionId(), callback, closure);
+}
+
+rtError
+rtConnection_AddListenerWithId(rtConnection con, char const* expression, uint32_t expressionId, rtMessageCallback callback, void* closure)
 {
   int i;
 
@@ -1264,7 +1279,46 @@ rtConnection_AddListener(rtConnection con, char const* expression, uint32_t expr
 }
 
 rtError
-rtConnection_RemoveListener(rtConnection con, char const* expression, uint32_t expressionId)
+rtConnection_RemoveListener(rtConnection con, char const* expression)
+{
+  int i;
+  int route_id = 0;
+
+  if (!con)
+    return rtErrorFromErrno(EINVAL);
+
+  pthread_mutex_lock(&con->mutex);
+  for (i = 0; i < RTMSG_LISTENERS_MAX; ++i)
+  {
+    if ((con->listeners[i].in_use) && (0 == strcmp(expression, con->listeners[i].expression)))
+    {
+        con->listeners[i].in_use = 0;
+        route_id = con->listeners[i].subscription_id;
+        con->listeners[i].subscription_id = 0;
+        con->listeners[i].closure = NULL;
+        con->listeners[i].callback = NULL;
+        free(con->listeners[i].expression);
+        con->listeners[i].expression = NULL;
+        break;
+    }
+  }
+  pthread_mutex_unlock(&con->mutex);
+
+  if (i >= RTMSG_LISTENERS_MAX)
+    return RT_ERROR_INVALID_ARG;
+
+  rtMessage m;
+  rtMessage_Create(&m);
+  rtMessage_SetInt32(m, "add", 0);
+  rtMessage_SetString(m, "topic", expression);
+  rtMessage_SetInt32(m, "route_id", route_id);
+  rtConnection_SendMessage(con, m, "_RTROUTED.INBOX.SUBSCRIBE");
+  rtMessage_Release(m);
+  return 0;
+}
+
+rtError
+rtConnection_RemoveListenerWithId(rtConnection con, char const* expression, uint32_t expressionId)
 {
   int i;
   int route_id = 0;
@@ -1784,11 +1838,7 @@ static void * rtConnection_ReaderThread(void *data)
   while (1 == GetRunThreadsSync(con))
   {
     rtTime_Now(&con->reader_reconnect_time);
-    #ifdef WITH_SPAKE2
-    if((err = rtConnection_Read(con, 60000)) != RT_OK)
-    #else
     if((err = rtConnection_Read(con, -1)) != RT_OK)
-    #endif
     {
       if (0 == GetRunThreadsSync(con))
       {

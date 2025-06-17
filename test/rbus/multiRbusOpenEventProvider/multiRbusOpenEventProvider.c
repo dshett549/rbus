@@ -20,16 +20,30 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <pthread.h>
-#include <sys/time.h>
-#include <time.h>
-#include <unistd.h>
-#include <string.h>
-#include <getopt.h>
+#include<unistd.h>
 #include <rbus.h>
 
-int loopFor = 60;
-int subscribed = 0;
+int loopFor = 40;
+
+rbusError_t getHandler(rbusHandle_t handle, rbusProperty_t property, rbusGetHandlerOptions_t* options)
+{
+    char const* name = rbusProperty_GetName(property);
+    (void)handle;
+    (void)options;
+
+    if(strcmp(name, "Device.Sample.InitialEvent1!") == 0)
+    {
+	char buff[128];
+	rbusValue_t value;
+	snprintf(buff, sizeof(buff), "%s",options->requestingComponent);
+	rbusValue_Init(&value);
+	rbusValue_SetString(value, buff);
+	rbusProperty_SetValue(property, value);
+	rbusProperty_fwrite(property, 0, stdout);
+	rbusValue_Release(value);
+    }
+    return RBUS_ERROR_SUCCESS;
+}
 
 rbusError_t eventSubHandler(rbusHandle_t handle, rbusEventSubAction_t action, const char* eventName, rbusFilter_t filter, int32_t interval, bool* autoPublish)
 {
@@ -45,9 +59,9 @@ rbusError_t eventSubHandler(rbusHandle_t handle, rbusEventSubAction_t action, co
         action == RBUS_EVENT_ACTION_SUBSCRIBE ? "subscribe" : "unsubscribe",
         eventName);
 
-    if(!strcmp("Device.Provider1.Event1!", eventName))
+    if(strcmp("Device.Sample.InitialEvent1!", eventName))
     {
-        subscribed = action == RBUS_EVENT_ACTION_SUBSCRIBE ? 1 : 0;
+        printf("provider: eventSubHandler unexpected eventName %s\n", eventName);
     }
 
     return RBUS_ERROR_SUCCESS;
@@ -61,10 +75,10 @@ int main(int argc, char *argv[])
     rbusHandle_t handle;
     int rc = RBUS_ERROR_SUCCESS;
 
-    char componentName[] = "RawDataEventProvider";
+    char componentName[] = "EventProvider";
 
-    rbusDataElement_t dataElements[1] = {
-        {"Device.Provider1.Event1!", RBUS_ELEMENT_TYPE_EVENT, {NULL, NULL, NULL, NULL, eventSubHandler, NULL}}
+    rbusDataElement_t dataElements[] = {
+        {"Device.Sample.InitialEvent1!", RBUS_ELEMENT_TYPE_EVENT, {getHandler, NULL, NULL, NULL, eventSubHandler, NULL}},
     };
 
     printf("provider: start\n");
@@ -82,29 +96,13 @@ int main(int argc, char *argv[])
         printf("provider: rbus_regDataElements failed: %d\n", rc);
         goto exit1;
     }
-
     while (loopFor != 0)
     {
         printf("provider: exiting in %d seconds\n", loopFor);
-        sleep(1);
         loopFor--;
-
-        if(subscribed)
-        {
-            sleep(2);
-            printf("======= publishing RawData Event ===== \n");
-
-            rbusEventRawData_t event = {0};
-            event.name = dataElements[0].name;
-            event.rawData = "Hello";
-            event.rawDataLen = strlen("Hello")+1;
-
-            rc = rbusEvent_PublishRawData(handle, &event);
-            if(rc != RBUS_ERROR_SUCCESS)
-                printf("provider: rbusEvent_PublishRawData Event failed: %d\n", rc);
-        }
-
+	sleep(1);
     }
+
     rbus_unregDataElements(handle, 1, dataElements);
 exit1:
     rbus_close(handle);

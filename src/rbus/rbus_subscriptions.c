@@ -123,9 +123,8 @@ rbusSubscription_t* rbusSubscriptions_addSubscription(rbusSubscriptions_t subscr
     rbusSubscription_t* sub;
     TokenChain* tokens;
 
-    static uint32_t subscriptionId = 4; /* Starting the subscription ID with 4 as the initial 3 values are allocated for the below add listener
+    static uint32_t subscriptionId = 3; /* Starting the subscription ID with 3 as the initial 2 values are allocated for the below add listener
                                             rtconnection create internal
-                                            rbus register object
                                             client advisory */
 
     RBUSLOG_DEBUG("adding %s %s", listener, eventName);
@@ -622,7 +621,7 @@ remove_bad_file:
         rbusBuffer_Destroy(buff);
 
     if(sub)
-        free(sub);
+        subscriptionFree(sub);
 
     if(remove(filePath) != 0)
         RBUSLOG_ERROR("failed to remove %s", filePath);
@@ -666,7 +665,11 @@ static void rbusSubscriptions_saveCache(rbusSubscriptions_t subscriptions)
     {
         rtListItem_GetData(item, (void**)&sub);
         if(!sub)
+        {
+            rbusBuffer_Destroy(buff);
+            fclose(file);
             return;
+        }
         rbusBuffer_WriteStringTLV(buff, sub->listener, strlen(sub->listener)+1);
         rbusBuffer_WriteStringTLV(buff, sub->eventName, strlen(sub->eventName)+1);
         rbusBuffer_WriteInt32TLV(buff, sub->componentId);

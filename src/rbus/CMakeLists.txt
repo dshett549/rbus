@@ -40,8 +40,7 @@ add_library(
     rbus_subscriptions.c
     rbus_tokenchain.c
     rbus_asyncsubscribe.c
-    rbus_intervalsubscription.c
-    rbus_config.c)
+    rbus_intervalsubscription.c)
 
 target_link_libraries(rbus rbuscore rtMessage -fPIC -pthread)
 
@@ -57,3 +56,7 @@ install (TARGETS rbus
 
 install (DIRECTORY ${PROJECT_SOURCE_DIR}/include/ DESTINATION "include/rbus")
 
+if (MSG_ROUNDTRIP_TIME)
+  message("Message rountrip time calculation enabled")
+  add_definitions(-DMSG_ROUNDTRIP_TIME=1)
+endif (MSG_ROUNDTRIP_TIME)

@@ -434,11 +434,11 @@ TEST_F(TestServer, rbus_registerObjNameCheck_test2)
     return;
 }
 
-/*Boundary testing for MAX_OBJECT_NAME_LENGTH - 128*/
+/*Boundary testing for MAX_OBJECT_NAME_LENGTH - 256*/
 TEST_F(TestServer, rbus_registerObjNameCheck_test3)
 {
     int counter = 1;
-    char obj_name[129] = "0";
+    char obj_name[MAX_OBJECT_NAME_LENGTH + 1] = "0";
     rbusCoreError_t err = RBUSCORE_SUCCESS;
 
     CREATE_RBUS_SERVER_REG_OBJECT(counter);
@@ -449,11 +449,11 @@ TEST_F(TestServer, rbus_registerObjNameCheck_test3)
     return;
 }
 
-/*Boundary testing for MAX_OBJECT_NAME_LENGTH - 128*/
+/*Boundary testing for MAX_OBJECT_NAME_LENGTH - 256*/
 TEST_F(TestServer, rbus_registerObjNameCheck_test4)
 {
     int counter = 1;
-    char obj_name[128] = "0";
+    char obj_name[MAX_OBJECT_NAME_LENGTH] = "0";
     rbusCoreError_t err = RBUSCORE_SUCCESS;
 
     CREATE_RBUS_SERVER_REG_OBJECT(counter);
@@ -466,11 +466,11 @@ TEST_F(TestServer, rbus_registerObjNameCheck_test4)
     return;
 }
 
-/*Boundary testing for MAX_OBJECT_NAME_LENGTH - 128*/
+/*Boundary testing for MAX_OBJECT_NAME_LENGTH - 256*/
 TEST_F(TestServer, rbus_registerObjNameCheck_test5)
 {
     int counter = 1;
-    char obj_name[129] = "0";
+    char obj_name[MAX_OBJECT_NAME_LENGTH + 1] = "0";
     rbusCoreError_t err = RBUSCORE_SUCCESS;
 
     CREATE_RBUS_SERVER_REG_OBJECT(counter);
@@ -624,11 +624,6 @@ TEST_F(TestServer, rbus_registerObjBoundaryNegative_test1)
        EXPECT_EQ(err, RBUSCORE_SUCCESS) << "rbus_registerObj failed";
     }
 
-    memset( buffer, 0, DEFAULT_RESULT_BUFFERSIZE );
-    snprintf(buffer, (sizeof(buffer) - 1), "%s_%d", obj_name, i);
-    //printf("Registering object %s \n", buffer);
-    err = rbus_registerObj(buffer, callback, NULL);
-    EXPECT_EQ(err, RBUSCORE_ERROR_GENERAL) << "rbus_registerObj failed";
     for(i = 2; i <= 63; i++)
     {
        memset( buffer, 0, DEFAULT_RESULT_BUFFERSIZE );
@@ -1057,7 +1052,7 @@ TEST_F(TestServer, rbus_removeElement_test1)
 {
     int counter = 1;
     char server_obj[] = "test_server_1.obj1";
-    char obj_name[130] = "test_server_1.obj2";
+    char obj_name[MAX_OBJECT_NAME_LENGTH + 1] = "test_server_1.obj2";
     char server_element[] = "server_element1";
     bool conn_status = false;
     char test_string[] = "rbus_client_test_string";
@@ -1137,17 +1132,19 @@ TEST_F(TestServer, rtmsg_rtConnection_CreateWithConfig_test3)
 
 TEST_F(TestServer, rtmsg_rtConnection_SendResponse_test1)
 {
-  char *name = "sample_test";
-  rtMessageHeader const* hdr = (const rtMessageHeader*)name;
+  rtMessageHeader hdr;
   char* buff = "TestName";
   rtError err;
   rtMessage res;
 
   rtConnection  con;
   rtConnection_Create(&con, "PROVIDER1", "unix:///tmp/rtrouted");
+  #ifdef MSG_ROUNDTRIP_TIME
+  rtMessageHeader_Init(&hdr);
+  #endif
   rtMessage_Create(&res);
   rtMessage_SetString(res, "reply", buff);
-  err = rtConnection_SendResponse(con, hdr, res, 1000);
+  err = rtConnection_SendResponse(con, &hdr, res, 1000);
   EXPECT_EQ(err, RT_OK);
   rtMessage_Release(res);
   rtConnection_Destroy(con);
@@ -1194,7 +1191,7 @@ TEST_F(TestServer, rtmsg_rtMessage_SetMessage_test1)
     rtMessage req = NULL, msg = NULL;
     rtMessage item, p;
     char* s = NULL;
-    char val;
+    char val[10];
     uint32_t n = 0;
     uint32_t size = 0;
     rtError err;
@@ -1223,7 +1220,7 @@ TEST_F(TestServer, rtmsg_rtMessage_SetMessage_test1)
     //Neg test passing invalid param
     err = rtMessage_GetMessageItem(item, "params", j, &p);
     EXPECT_EQ(err, RT_PROPERTY_NOT_FOUND) << "rtMessage_GetMessageItem failed";
-    err = rtMessage_GetStringValue(req, "method", &val, 10);
+    err = rtMessage_GetStringValue(req, "method", val, 10);
     EXPECT_EQ(err, RT_OK) << "rtMessage_GetStringValue failed";
     //Neg test passing invalid param
     err = rtMessage_SetMessage(NULL, "params", item);

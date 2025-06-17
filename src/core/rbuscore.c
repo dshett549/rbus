@@ -682,6 +682,7 @@ rbusCoreError_t rbus_closeBrokerConnection()
         return RBUSCORE_ERROR_GENERAL;
     }
     g_connection = NULL;
+    g_run_event_client_dispatch = false;
     unlock();
 
     pthread_mutex_destroy(&g_mutex);
@@ -762,7 +763,7 @@ static rbusCoreError_t send_subscription_request(const char * object_name, const
         else
             rbusMessage_Release(internal_response);
     }
-    else if(RBUSCORE_ERROR_DESTINATION_UNREACHABLE == ret)
+    else if(RBUSCORE_ERROR_ENTRY_NOT_FOUND == ret)
     {
         RBUSCORELOG_DEBUG("Error %s subscription for %s::%s. Provider not found. %d", (activate? "adding" : "removing"), object_name, event_name, ret);
         //keep ret as RBUSCORE_ERROR_DESTINATION_UNREACHABLE
@@ -812,7 +813,10 @@ rbusCoreError_t rbus_registerObj(const char * object_name, rbus_callback_t handl
     server_object_create(&obj, object_name, handler, user_data);
 
     //TODO: callback signature translation. rbusMessage uses a significantly wider signature for callbacks. Translate to something simpler.
-    err = rtConnection_AddListener(g_connection, object_name, RBUS_REGISTER_OBJECT_EXPRESSION_ID, onMessage, obj);
+    err = rtConnection_AddListener(g_connection, object_name, onMessage, obj); /* Avoiding rtConnection_AddListenerWithId call here as ccsp code
+                                                                                    uses this rbus_registerObj() function call directly and usage
+                                                                                    of rtConnection_AddListenerWithId() function will result in
+                                                                                    conflict with subscriptionId */
 
     if(RT_OK == err)
     {
@@ -957,8 +961,7 @@ rbusCoreError_t rbus_unregisterObj(const char * object_name)
         RBUSCORELOG_ERROR("object_name is invalid.");
         return RBUSCORE_ERROR_INVALID_PARAM;
     }
-
-    err = rtConnection_RemoveListener(g_connection, object_name, RBUS_REGISTER_OBJECT_EXPRESSION_ID);
+    err = rtConnection_RemoveListener(g_connection, object_name);
     if(RT_OK != err)
     {
         RBUSCORELOG_ERROR("rtConnection_RemoveListener %s failed: Err=%d", object_name, err);
@@ -1058,7 +1061,7 @@ rbusCoreError_t rbus_pushObj(const char * object_name, rbusMessage message, int 
     rbusMessage response = NULL;
     if((ret = rbus_invokeRemoteMethod(object_name, METHOD_SETPARAMETERVALUES, message, timeout_millisecs, &response)) != RBUSCORE_SUCCESS)
     {
-        RBUSCORELOG_ERROR("Failed to send message. Error code: 0x%x", err);
+        RBUSCORELOG_ERROR("Failed to send message. Error code: 0x%x", ret);
         return ret;
     }
     else
@@ -1078,7 +1081,7 @@ rbusCoreError_t rbus_pushObj(const char * object_name, rbusMessage message, int 
     return ret;
 }
 
-static rtError rbus_sendRequest(rtConnection con, rbusMessage req, char const* topic, rbusMessage* res, int32_t timeout)
+static rtError rbus_sendRequest(rtConnection con, rbusMessage req, char const* topic, rbusMessage* res, uint32_t timeout)
 {
     rtError err = RT_OK;
     uint8_t* data = NULL;
@@ -1100,20 +1103,18 @@ static rtError rbus_sendRequest(rtConnection con, rbusMessage req, char const* t
     return err;
 }
 
-rbusCoreError_t rbus_invokeRemoteMethod(const char * object_name, const char *method, rbusMessage out, int timeout_millisecs, rbusMessage *in)
+rbusCoreError_t rbus_invokeRemoteMethod(const char * object_name, const char *method, rbusMessage out, uint32_t timeout_millisecs, rbusMessage *in)
 {
     return rbus_invokeRemoteMethod2(g_connection, object_name, method, out, timeout_millisecs, in);
 }
 
-rbusCoreError_t rbus_invokeRemoteMethod2(rtConnection myConn, const char * object_name, const char *method, rbusMessage out, int timeout_millisecs, rbusMessage *in)
+rbusCoreError_t rbus_invokeRemoteMethod2(rtConnection myConn, const char * object_name, const char *method, rbusMessage out, uint32_t timeout_millisecs, rbusMessage *in)
 {
     rtError err = RT_OK;
     rbusCoreError_t ret = RBUSCORE_SUCCESS;
 
     char const *traceParent = NULL;
     char const *traceState = NULL;
-
-    rbus_getOpenTelemetryContext(&traceParent, &traceState);
 
     if(NULL == myConn)
     {
@@ -1127,6 +1128,8 @@ rbusCoreError_t rbus_invokeRemoteMethod2(rtConnection myConn, const char * objec
         return RBUSCORE_ERROR_INVALID_PARAM;
     }
 
+    rbus_getOpenTelemetryContext(&traceParent, &traceState);
+
     *in = NULL;
     if(NULL == out)
         rbusMessage_Init(&out);
@@ -1139,7 +1142,7 @@ rbusCoreError_t rbus_invokeRemoteMethod2(rtConnection myConn, const char * objec
         if(RT_OBJECT_NO_LONGER_AVAILABLE == err)
         {
             RBUSCORELOG_DEBUG("Cannot reach object %s.", object_name);
-            ret = RBUSCORE_ERROR_DESTINATION_UNREACHABLE;
+            ret = RBUSCORE_ERROR_ENTRY_NOT_FOUND;
         }
         else if(RT_ERROR_TIMEOUT == err)
         {
@@ -1520,8 +1523,8 @@ static void master_event_callback(rtMessageHeader const* hdr, uint8_t const* dat
     }
     /* If no matching objects exist in records. Create a new entry.*/
     unlock();
-    rbusMessage_Release(msg);
     RBUSCORELOG_WARN("Received event %s::%s for which no subscription exists.", sender, event_name);
+    rbusMessage_Release(msg);
     return;
 }
 
@@ -1782,7 +1785,7 @@ rbusCoreError_t rbus_registerClientDisconnectHandler(rbus_client_disconnect_call
     lock();
     if(!g_advisory_listener_installed)
     {
-        rtError err = rtConnection_AddListener(g_connection, RTMSG_ADVISORY_TOPIC, RBUS_ADVISORY_EXPRESSION_ID, &rtrouted_advisory_callback, g_connection);
+        rtError err = rtConnection_AddListenerWithId(g_connection, RTMSG_ADVISORY_TOPIC, RBUS_ADVISORY_EXPRESSION_ID, &rtrouted_advisory_callback, g_connection);
         if(err == RT_OK)
         {
             RBUSCORELOG_DEBUG("Listening for advisory messages");
@@ -1805,7 +1808,7 @@ rbusCoreError_t rbus_unregisterClientDisconnectHandler()
     lock();
     if(g_advisory_listener_installed)
     {
-        rtConnection_RemoveListener(g_connection, RTMSG_ADVISORY_TOPIC, RBUS_ADVISORY_EXPRESSION_ID);
+        rtConnection_RemoveListenerWithId(g_connection, RTMSG_ADVISORY_TOPIC, RBUS_ADVISORY_EXPRESSION_ID);
         g_advisory_listener_installed = false;
     }
     unlock();
@@ -2295,7 +2298,6 @@ rbusCoreError_t rbus_discoverRegisteredComponents(int * count, char *** componen
         }
 
         rtMessage_Release(msg);
-        rtMessage_Release(out);
         ret = RBUSCORE_SUCCESS;
     }
     else
@@ -2303,7 +2305,8 @@ rbusCoreError_t rbus_discoverRegisteredComponents(int * count, char *** componen
         RBUSCORELOG_ERROR("Failed with error code %d", err);
         ret = RBUSCORE_ERROR_GENERAL;
     }
-    
+
+    rtMessage_Release(out);
     return ret;
 }
 

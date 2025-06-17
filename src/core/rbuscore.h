@@ -24,7 +24,6 @@
 #include "rbuscore_types.h"
 #include "rbuscore_message.h"
 #include <rtm_discovery_api.h>
-#include "rtrouteBase.h"
 
 #define MAX_OBJECT_NAME_LENGTH RTMSG_HEADER_MAX_TOPIC_LENGTH
 #define MAX_METHOD_NAME_LENGTH 64
@@ -32,8 +31,7 @@
 #define MAX_SUPPORTED_METHODS 32
 #define MAX_REGISTERED_OBJECTS 64
 #define RBUS_OPEN_TELEMETRY_DATA_MAX 512
-#define RBUS_REGISTER_OBJECT_EXPRESSION_ID 2
-#define RBUS_ADVISORY_EXPRESSION_ID 3
+#define RBUS_ADVISORY_EXPRESSION_ID 2
 
 void rbus_getOpenTelemetryContext(const char **s, const char **t);
 void rbus_setOpenTelemetryContext(const char *s, const char *t);
@@ -104,8 +102,8 @@ rbusCoreError_t rbus_unregisterMethodTable(const char * object_name, rbus_method
  * of the operation when it's complete. Marshalling of input arguments and output response is the responsibility of the caller. This function blocks until it receives a response 
  * from the remote recipient, or times out after 'timeout_milliseconds'. rbus will release 'out' internally. If call is successful, it's caller's responsibility
  * to release 'in'. */
-rbusCoreError_t rbus_invokeRemoteMethod(const char * object_name, const char *method, rbusMessage out, int timeout_millisecs, rbusMessage *in);
-rbusCoreError_t rbus_invokeRemoteMethod2(rtConnection conn, const char * object_name, const char *method, rbusMessage out, int timeout_millisecs, rbusMessage *in);
+rbusCoreError_t rbus_invokeRemoteMethod(const char * object_name, const char *method, rbusMessage out, uint32_t timeout_millisecs, rbusMessage *in);
+rbusCoreError_t rbus_invokeRemoteMethod2(rtConnection conn, const char * object_name, const char *method, rbusMessage out, uint32_t timeout_millisecs, rbusMessage *in);
 
 /* Invoke a remote procedure call 'method' on a destination/object object_name. 'out' has the input arguments necessary for the RPC. This function does not block for response
  * from the remote end. It returns immediately after the outbound message is dispatched. 'callback' is invoked when it receives the response to the RPC call, or if it times out 

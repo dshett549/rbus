@@ -18,8 +18,8 @@
 */
 #define _GNU_SOURCE 1
 #include "rbus_asyncsubscribe.h"
-#include "rbus_config.h"
 #include "rbus_log.h"
+#include "rbus_handle.h"
 #include <rtTime.h>
 #include <rtList.h>
 #include <rtMemory.h>
@@ -39,6 +39,7 @@
 #define VERIFY_NULL(T) if(NULL == T){ return; }
 #define LOCK() ERROR_CHECK(pthread_mutex_lock(&gRetrier->mutexQueue))
 #define UNLOCK() ERROR_CHECK(pthread_mutex_unlock(&gRetrier->mutexQueue))
+
 
 /*defined in rbus.c*/
 void _subscribe_async_callback_handler(rbusHandle_t handle, rbusEventSubscription_t* subscription, rbusError_t error, uint32_t subscriptionId);
@@ -108,13 +109,13 @@ static int rbusAsyncSubscribeRetrier_DetermineNextSendTime(rtTime_t* nextSendTim
     rtListItem li;
     char tbuff[200];
 
-    rtList_GetFront(gRetrier->items, &li);
-
     //find the earliest nextRetryTime using nextSendTime to compare and store
     rtTime_Now(&now);
-    rtTime_Later(&now, rbusConfig_Get()->subscribeMaxWait + 1000, nextSendTime);
+    rtTime_Later(&now, RBUS_SUBSCRIBE_MAXWAIT + 1000, nextSendTime);
 
     RBUSLOG_DEBUG("now=%s", rtTime_ToString(&now, tbuff));
+
+    rtList_GetFront(gRetrier->items, &li);
 
     if(!li)
     {
@@ -125,7 +126,6 @@ static int rbusAsyncSubscribeRetrier_DetermineNextSendTime(rtTime_t* nextSendTim
     {
         AsyncSubscription_t* item;
         rtListItem_GetData(li, (void**)&item);
-
         RBUSLOG_INFO("item=%s", rtTime_ToString(&item->nextRetryTime, tbuff));
 
         if(rtTime_Compare(&item->nextRetryTime, nextSendTime) < 0)
@@ -175,9 +175,9 @@ static void rbusAsyncSubscribeRetrier_SendSubscriptionRequests()
         if(rtTime_Compare(&item->nextRetryTime, &now) <= 0)
         {
             rbusCoreError_t coreerr;
-            int elapsed;
+            uint32_t elapsed;
             int providerError;
-            rbusMessage response;
+            rbusMessage response = NULL;
             uint32_t subscriptionId = 0;
 
 
@@ -190,8 +190,8 @@ static void rbusAsyncSubscribeRetrier_SendSubscriptionRequests()
 
             elapsed = rtTime_Elapsed(&item->startTime, &now);
 
-            if(coreerr == RBUSCORE_ERROR_DESTINATION_UNREACHABLE &&  /*the only error that means provider not found yet*/
-             elapsed < rbusConfig_Get()->subscribeTimeout)    /*if we haven't timeout out yet*/
+            if(coreerr == RBUSCORE_ERROR_ENTRY_NOT_FOUND &&  /*the only error that means provider not found yet*/
+             elapsed < rbusHandle_FetchSubscribeTimeout(item->subscription->handle))    /*if we haven't timeout out yet*/
             {
                 if(item->nextWaitTime == 0)
                     item->nextWaitTime = 1000; //miliseconds
@@ -199,11 +199,11 @@ static void rbusAsyncSubscribeRetrier_SendSubscriptionRequests()
                     item->nextWaitTime *= 2;//just double the time
 
                 //apply a limit to our doubling
-                if(item->nextWaitTime > rbusConfig_Get()->subscribeMaxWait)
-                  item->nextWaitTime = rbusConfig_Get()->subscribeMaxWait;
+                if(item->nextWaitTime > RBUS_SUBSCRIBE_MAXWAIT)
+                  item->nextWaitTime = RBUS_SUBSCRIBE_MAXWAIT;
 
                 //update nextRetryTime to nextWaitTime miliseconds from now, without exceeding subscribeTimeout
-                if(elapsed + item->nextWaitTime < rbusConfig_Get()->subscribeTimeout)
+                if(elapsed + item->nextWaitTime < rbusHandle_FetchSubscribeTimeout(item->subscription->handle))
                 {
                     rtTime_Later(&now, item->nextWaitTime, &item->nextRetryTime);
                 }
@@ -211,13 +211,13 @@ static void rbusAsyncSubscribeRetrier_SendSubscriptionRequests()
                 {
                     //its possible to have the odd situation, based on how subscribeTimeout/subscribeMaxWait are configured, 
                     //where this final retry happens very close to the previous retry (e.g. ... wait 60, sub, wait 60, sub, wait 1, sub)
-                    rtTime_Later(&item->startTime, rbusConfig_Get()->subscribeTimeout, &item->nextRetryTime);
+                    rtTime_Later(&item->startTime, rbusHandle_FetchSubscribeTimeout(item->subscription->handle), &item->nextRetryTime);
                 }
 
                 RBUSLOG_INFO("%s no provider. retry in %d ms with %d left",
                     item->subscription->eventName, 
                     rtTime_Elapsed(&now, &item->nextRetryTime), 
-                    rbusConfig_Get()->subscribeTimeout - elapsed );
+                    rbusHandle_FetchSubscribeTimeout(item->subscription->handle)- elapsed );
             }
             else
             {
@@ -230,10 +230,12 @@ static void rbusAsyncSubscribeRetrier_SendSubscriptionRequests()
                         rbusMessage_GetUInt32(response, &subscriptionId);
                     RBUSLOG_INFO("%s subscribe retries succeeded", item->subscription->eventName);
                     responseErr = RBUS_ERROR_SUCCESS;
+                    if(response)
+                        rbusMessage_Release(response);
                 }
                 else
                 {
-                    if(coreerr == RBUSCORE_ERROR_DESTINATION_UNREACHABLE)
+                    if(coreerr == RBUSCORE_ERROR_ENTRY_NOT_FOUND)
                     {
                         RBUSLOG_INFO("%s all subscribe retries failed and no provider found", item->subscription->eventName);
                         RBUSLOG_WARN("EVENT_SUBSCRIPTION_FAIL_NO_PROVIDER_COMPONENT  %s", item->subscription->eventName);/*RDKB-33658-AC7*/
@@ -250,6 +252,8 @@ static void rbusAsyncSubscribeRetrier_SendSubscriptionRequests()
                         RBUSLOG_INFO("%s subscribe retries failed due to core error %d", item->subscription->eventName, coreerr);
                         responseErr = RBUS_ERROR_BUS_ERROR;
                     }
+                    if(response)
+                        rbusMessage_Release(response);
                 }
 
                 _subscribe_async_callback_handler(item->subscription->handle, item->subscription, responseErr, subscriptionId);
