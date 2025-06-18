@@ -107,11 +107,11 @@ if (BUILD_FOR_DESKTOP)
 add_executable(rbusBlockingConsumer consumer/rbusBlockingConsumer.c)
 add_dependencies(rbusBlockingConsumer rbus)
 target_link_libraries(rbusBlockingConsumer rbus)
+endif (BUILD_FOR_DESKTOP)
 
 add_executable(rbusBlockingProvider provider/rbusBlockingProvider.c)
 add_dependencies(rbusBlockingProvider rbus)
 target_link_libraries(rbusBlockingProvider rbus)
-endif (BUILD_FOR_DESKTOP)
 
 add_executable(rbusOpenTelemetry consumer/rbusOpenTelemetry.c)
 add_dependencies(rbusOpenTelemetry rbus)
