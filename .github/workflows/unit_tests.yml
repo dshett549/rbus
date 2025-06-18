@@ -70,7 +70,7 @@ jobs:
              pkill -f rbusSampleProvider
              pkill -f rbusBlockingProvider
              pkill -f rbusDmlBlockingConsumer
-          ) &
+          )&
 
       - name: Run RbusTestTimeoutValues Unit test
         run: |
