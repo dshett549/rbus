@@ -65,12 +65,12 @@ jobs:
           nohup ./bin/rbusSampleProvider >/tmp/log_sampleProvider.txt 2>&1 &
           ./bin/rbusBlockingProvider >/tmp/log_blockingProvider.txt 2>&1 &
           ./bin/rbusDmlBlockingConsumer >/tmp/log_blockingProvider.txt 2>&1 &
-          (
+          bash -c '
              sleep 300
              pkill -f rbusSampleProvider
              pkill -f rbusBlockingProvider
              pkill -f rbusDmlBlockingConsumer
-          )&
+          ' &
 
       - name: Run RbusTestTimeoutValues Unit test
         run: |
