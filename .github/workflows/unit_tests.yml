@@ -57,22 +57,22 @@ jobs:
           export PREFIX=$PWD
           export LD_LIBRARY_PATH=$PREFIX/lib
           nohup ./bin/rtrouted -f -l DEBUG > /tmp/rtrouted_log.txt &
-      - name: Run BlockingGetResponse Unit test
+      - name: Run blocking provider test
         shell: bash
         run: |
           cd install/usr
           export PREFIX=$PWD
           export LD_LIBRARY_PATH=$PREFIX/lib
-          nohup ./bin/rbusSampleProvider >/tmp/log_sampleProvider.txt &
-          ./bin/rbusBlockingProvider >/tmp/log_blockingProvider.txt &
-          ./bin/rbusDmlBlockingConsumer >/tmp/log_blockingProvider.txt &
-          bash -c '
-            sleep 300
-            pkill -f rbusSampleProvider
-            pkill -f rbusBlockingProvider
-            pkill -f rbusDmlBlockingConsumer
-          ' &
-
+          nohup ./bin/rbusSampleProvider > /tmp/log_sampleProvider.txt 2>&1 &
+          nohup ./bin/rbusBlockingProvider > /tmp/log_blockingProvider.txt 2>&1 &
+          nohup ./bin/rbusDmlBlockingConsumer > /tmp/log_dmlConsumer.txt 2>&1 &
+          echo '#!/bin/bash
+          sleep 300
+          pkill -f rbusSampleProvider
+          pkill -f rbusBlockingProvider
+          pkill -f rbusDmlBlockingConsumer' > /tmp/cleanup.sh
+          chmod +x /tmp/cleanup.sh
+          nohup /tmp/cleanup.sh > /tmp/cleanup_log.txt 2>&1 &
 
       - name: Run RbusTestTimeoutValues Unit test
         run: |
@@ -81,7 +81,6 @@ jobs:
           export LD_LIBRARY_PATH=$PREFIX/lib
           nohup ./bin/rbusTestTimeoutValuesProvider &
           ./bin/rbusTestTimeoutValuesConsumer
-
       - name: Run Unit test
         run: |
           cd install/usr
