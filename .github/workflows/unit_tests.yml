@@ -58,6 +58,7 @@ jobs:
           export LD_LIBRARY_PATH=$PREFIX/lib
           nohup ./bin/rtrouted -f -l DEBUG > /tmp/rtrouted_log.txt &
       - name: Run BlockingGetResponse Unit test
+        shell: bash
         run: |
           cd install/usr
           export PREFIX=$PWD
@@ -66,11 +67,12 @@ jobs:
           ./bin/rbusBlockingProvider >/tmp/log_blockingProvider.txt &
           ./bin/rbusDmlBlockingConsumer >/tmp/log_blockingProvider.txt &
           bash -c '
-             sleep 300
-             pkill -f rbusSampleProvider
-             pkill -f rbusBlockingProvider
-             pkill -f rbusDmlBlockingConsumer
-          ' &
+            sleep 300
+            pkill -f rbusSampleProvider
+            pkill -f rbusBlockingProvider
+            pkill -f rbusDmlBlockingConsumer
+          ' &
+
 
       - name: Run RbusTestTimeoutValues Unit test
         run: |
