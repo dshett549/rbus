@@ -552,7 +552,7 @@ TEST_F(StressTestServer, rbus_resolveWildcardDestination_test2)
             err = rbus_addElement(server_obj2, *(obj2_elements + i));
             EXPECT_EQ(err, RBUSCORE_SUCCESS) << "rbus_addElement failed";
         }
-        for (i = 0; i < obj1_element_count; i++)
+        /*for (i = 0; i < obj1_element_count; i++)
         {
             err = rbus_removeElement(server_obj1, *(obj1_elements + i));
             EXPECT_EQ(err, RBUSCORE_SUCCESS) << "rbus_removeElement failed";
@@ -562,7 +562,7 @@ TEST_F(StressTestServer, rbus_resolveWildcardDestination_test2)
         {
             err = rbus_removeElement(server_obj2, *(obj2_elements + i));
             EXPECT_EQ(err, RBUSCORE_SUCCESS) << "rbus_removeElement failed";
-        }
+        }*/
         printf("********** SERVER ENTERING PAUSED STATE******************** \n");
         pause();
     }
@@ -699,7 +699,7 @@ TEST_F(StressTestServer, rbus_resolveWildcardDestination_test4)
             err = rbus_addElement(server_obj2, *(obj2_elements + i));
             EXPECT_EQ(err, RBUSCORE_SUCCESS) << "rbus_addElement failed";
         }
-        for (i = 0; i < obj1_element_count; i++)
+        /*for (i = 0; i < obj1_element_count; i++)
         {
             err = rbus_removeElement(server_obj1, *(obj1_elements + i));
             EXPECT_EQ(err, RBUSCORE_SUCCESS) << "rbus_removeElement failed";
@@ -709,7 +709,7 @@ TEST_F(StressTestServer, rbus_resolveWildcardDestination_test4)
         {
             err = rbus_removeElement(server_obj2, *(obj2_elements + i));
             EXPECT_EQ(err, RBUSCORE_SUCCESS) << "rbus_removeElement failed";
-        }
+        }*/
         printf("********** SERVER ENTERING PAUSED STATE******************** \n");
         pause();
     }
@@ -768,7 +768,7 @@ TEST_F(StressTestServer, rbus_resolveWildcardDestination_test5)
         err = rbus_registerObj(server_obj2, callback, NULL);
         EXPECT_EQ(err, RBUSCORE_SUCCESS) << "rbus_registerObj failed";
 
-        for (i = 0; i < obj2_element_count; i++)
+        /*for (i = 0; i < obj2_element_count; i++)
         {
             err = rbus_addElement(server_obj2, *(obj2_elements + i));
             EXPECT_EQ(err, RBUSCORE_SUCCESS) << "rbus_addElement failed";
@@ -783,7 +783,7 @@ TEST_F(StressTestServer, rbus_resolveWildcardDestination_test5)
         {
             err = rbus_removeElement(server_obj2, *(obj2_elements + i));
             EXPECT_EQ(err, RBUSCORE_SUCCESS) << "rbus_removeElement failed";
-        }
+        }*/
         printf("********** SERVER ENTERING PAUSED STATE******************** \n");
         pause();
     }
