@@ -64,7 +64,9 @@ jobs:
           export PREFIX=$PWD
           export LD_LIBRARY_PATH=$PREFIX/lib
           nohup ./bin/rbusSampleProvider &
+          sleep 1
           nohup stdbuf -oL -eL ./bin/rbusBlockingProvider &
+          sleep 2
           nohup ./bin/rbusDmlBlockingConsumer &
       - name: Run RbusTestTimeoutValues Unit test
         run: |
