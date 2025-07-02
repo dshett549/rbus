@@ -63,14 +63,14 @@ jobs:
           cd install/usr
           export PREFIX=$PWD
           export LD_LIBRARY_PATH=$PREFIX/lib
-          nohup ./bin/rbusSampleProvider > rbusSampleProvider.log 2>&1 &
+          nohup  stdbuf -oL -eL ./bin/rbusSampleProvider > /tmp/rbusSampleProvider.txt 2>&1 &
           sleep 1
-          nohup ./bin/rbusBlockingProvider > rbusBlockingProvider.log 2>&1 &
+          nohup ./bin/rbusBlockingProvider > /tmp/rbusBlockingProvider.txt 2>&1 &
           sleep 1
-          ./bin/rbusDmlBlockingConsumer > rbusDmlBlockingConsumer.log 2>&1
-          cat rbusSampleProvider.log || true
-          cat rbusBlockingProvider.log || true
-          cat rbusDmlBlockingConsumer.log || true
+          ./bin/rbusDmlBlockingConsumer > /tmp/rbusDmlBlockingConsumer.txt 2>&1
+          cat /tmp/rbusSampleProvider.txt || true
+          cat /tmp/rbusBlockingProvider.txt || true
+          cat /tmp/rbusDmlBlockingConsumer.txt || true
       - name: Run RbusTestTimeoutValues Unit test
         run: |
           cd install/usr
