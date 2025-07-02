@@ -66,8 +66,8 @@ jobs:
           nohup ./bin/rbusSampleProvider &
           sleep 1
           nohup stdbuf -oL -eL ./bin/rbusBlockingProvider &
-          sleep 2
-          nohup ./bin/rbusDmlBlockingConsumer &
+          sleep 1
+          ./bin/rbusDmlBlockingConsumer
       - name: Run RbusTestTimeoutValues Unit test
         run: |
           cd install/usr
