@@ -63,9 +63,9 @@ jobs:
           cd install/usr
           export PREFIX=$PWD
           export LD_LIBRARY_PATH=$PREFIX/lib
-          nohup ./bin/rbusSampleProvider
-          nohup ./bin/rbusBlockingProvider
-          nohup ./bin/rbusDmlBlockingConsumer
+          nohup ./bin/rbusSampleProvider &
+          nohup ./bin/rbusBlockingProvider &
+          nohup ./bin/rbusDmlBlockingConsumer &
       - name: Run RbusTestTimeoutValues Unit test
         run: |
           cd install/usr
