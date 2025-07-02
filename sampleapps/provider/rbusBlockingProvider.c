@@ -27,7 +27,11 @@
 #include <string.h>
 #include <getopt.h>
 #include <rbus.h>
+#include <rtLog.h>
+#include <rtAtomic.h>
+#include <stdatomic.h>
 
+static atomic_int wait = 1;
 rbusError_t eventSubHandler(rbusHandle_t handle, rbusEventSubAction_t action, const char* eventName, rbusFilter_t filter, int32_t interval, bool* autoPublish)
 {
     (void)handle;
@@ -65,8 +69,10 @@ rbusError_t getHandler(rbusHandle_t handle, rbusProperty_t property, rbusGetHand
     if(strcmp(name, "rbus_obj_block") == 0)
         sleep(30);
     if(strcmp(name, "Device.Blocking.Test0") == 0)
-        while(1);
-
+    {
+        while(atomic_load(&wait))
+            usleep(10000);
+    }
     rbusValue_Release(value);
     return RBUS_ERROR_SUCCESS;
 }
@@ -125,14 +131,13 @@ int main(int argc, char *argv[])
         if(rc != RBUS_ERROR_SUCCESS)
         {
             printf ("rbus_get failed for %s with error [%d]\n", "Device.SampleProvider.", rc);
+            rt_atomic_fetch_sub(&wait, 1);
             break;
         }
         count++;
         sleep(1);
         rbusProperty_Release(prop);
     }
-    pause(); 
-
     rbus_unregDataElements(handle, dataElementsCount, dataElements);
 exit1:
     rbus_close(handle);

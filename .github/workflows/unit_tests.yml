@@ -57,6 +57,15 @@ jobs:
           export PREFIX=$PWD
           export LD_LIBRARY_PATH=$PREFIX/lib
           nohup ./bin/rtrouted -f -l DEBUG > /tmp/rtrouted_log.txt &
+      - name: Run drop test with inactive provider
+        continue-on-error: true
+        run: |
+          cd install/usr
+          export PREFIX=$PWD
+          export LD_LIBRARY_PATH=$PREFIX/lib
+          nohup ./bin/rbusSampleProvider
+          nohup ./bin/rbusBlockingProvider
+          nohup ./bin/rbusDmlBlockingConsumer
       - name: Run RbusTestTimeoutValues Unit test
         run: |
           cd install/usr
