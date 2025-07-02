@@ -65,7 +65,7 @@ jobs:
           export LD_LIBRARY_PATH=$PREFIX/lib
           nohup ./bin/rbusSampleProvider > rbusSampleProvider.log 2>&1 &
           sleep 1
-          nohup stdbuf -oL -eL ./bin/rbusBlockingProvider > rbusBlockingProvider.log 2>&1 &
+          nohup ./bin/rbusBlockingProvider > rbusBlockingProvider.log 2>&1 &
           sleep 1
           ./bin/rbusDmlBlockingConsumer > rbusDmlBlockingConsumer.log 2>&1
           cat rbusSampleProvider.log || true
