@@ -1918,10 +1918,17 @@ rbusError_t get_recursive_wildcard_handler (rbusHandle_t handle, char const *par
             ELM_PRIVATE_LOCK(child);
             result = child->cbTable.getHandler(handle, tmpProperties, &options);
             ELM_PRIVATE_UNLOCK(child);
-            if (result == RBUS_ERROR_SUCCESS)
+            const char* propName = rbusProperty_GetName(tmpProperties);
+            rbusValue_t propValue = rbusProperty_GetValue(tmpProperties);
+ 
+            if (result == RBUS_ERROR_SUCCESS && propName != NULL && propValue != NULL)
             {
-                rbusProperty_Append(properties, tmpProperties);
-                *pCount += 1;
+               rbusProperty_Append(properties, tmpProperties);
+               *pCount += 1;
+            }
+            else
+            {
+               RBUSLOG_WARN("getHandler for %s did not return a valid property (name or value is NULL)", instanceName);
             }
             rbusProperty_Release(tmpProperties);
             return result;
