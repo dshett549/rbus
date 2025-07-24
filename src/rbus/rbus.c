@@ -357,7 +357,7 @@ rbusError_t rbusOpenDirect_SubAdd(rbusHandle_t handle, rtVector eventSubs, char 
                 errorcode = rbusMessage_RemoveListener(handle, rawDataTopic, subInternal->subscriptionId);
                 if (errorcode != RBUS_ERROR_SUCCESS)
                 {
-                    RBUSLOG_WARN("rbusMessage_RemoveListener failed err:%d", errorcode);
+                    RBUSLOG_WARN("rbusMessage_emoveListener failed err:%d", errorcode);
                 }
             }
             memset(rawDataTopic, '\0', strlen(rawDataTopic));
