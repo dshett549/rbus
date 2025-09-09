@@ -1959,6 +1959,13 @@ rbusCoreError_t rbus_discoverWildcardDestinations(const char * expression, int *
     {
         ret = RBUSCORE_ERROR_MALFORMED_RESPONSE;
     }
+    if (ret != RBUSCORE_SUCCESS)
+    {
+        if (destinations)
+            *destinations = NULL;
+        if (count) 
+            *count = 0;
+    }
     return ret;
 }
 
@@ -2039,7 +2046,13 @@ rbusCoreError_t rbus_discoverObjectElements(const char * object, int * count, ch
     {
         ret = RBUSCORE_ERROR_GENERAL;
     }
-
+    if (ret != RBUSCORE_SUCCESS)
+    {
+        if (elements)
+           *elements = NULL;
+        if (count) 
+           *count = 0;
+    }
     return ret;
 }
 
@@ -2115,7 +2128,13 @@ rbusCoreError_t rbus_discoverElementObjects(const char* element, int * count, ch
     {
         ret = RBUSCORE_ERROR_MALFORMED_RESPONSE;
     }
-
+    if (ret != RBUSCORE_SUCCESS)
+    {
+        if (objects)
+            *objects = NULL;
+        if (count) 
+            *count = 0;
+    }
     return ret;
 }
 
@@ -2231,6 +2250,13 @@ rbusCoreError_t rbus_discoverElementsObjects(int numElements, const char** eleme
             free(array_ptr);
         }
     }
+    if (ret != RBUSCORE_SUCCESS)
+    {
+        if (objects)
+           *objects = NULL;
+        if (count) 
+           *count = 0;
+    }
     return ret;
 }
 
@@ -2296,7 +2322,13 @@ rbusCoreError_t rbus_discoverRegisteredComponents(int * count, char *** componen
         RBUSCORELOG_ERROR("Failed with error code %d", err);
         ret = RBUSCORE_ERROR_GENERAL;
     }
-
+    if (ret != RBUSCORE_SUCCESS)
+    {
+        if (components)
+            *components = NULL;
+        if (count) 
+            *count = 0;
+    }
     rtMessage_Release(out);
     return ret;
 }
