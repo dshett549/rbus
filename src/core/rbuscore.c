@@ -2146,6 +2146,11 @@ rbusCoreError_t rbus_discoverElementsObjects(int numElements, const char** eleme
     char** array_ptr = NULL;
     int array_count = 0;
 
+    if((NULL == objects) || (NULL == count))
+    {
+        RBUSCORELOG_ERROR("Object/count is NULL");
+        return RBUSCORE_ERROR_INVALID_PARAM;
+    }
     *count = 0;
 
     rtMessage_Create(&msg);
