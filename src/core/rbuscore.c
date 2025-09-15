@@ -1891,7 +1891,8 @@ rbusCoreError_t rbus_discoverWildcardDestinations(const char * expression, int *
     if((NULL == expression) || (NULL == count) || (NULL == destinations))
     {
         RBUSCORELOG_ERROR("expression/count/destinations pointer is NULL");
-        return RBUSCORE_ERROR_INVALID_PARAM;
+        ret = RBUSCORE_ERROR_INVALID_PARAM;
+        goto exit;
     }
 
     rtMessage_Create(&msg);
@@ -1959,6 +1960,8 @@ rbusCoreError_t rbus_discoverWildcardDestinations(const char * expression, int *
     {
         ret = RBUSCORE_ERROR_MALFORMED_RESPONSE;
     }
+
+exit:
     if (ret != RBUSCORE_SUCCESS)
     {
         if (destinations)
@@ -1984,7 +1987,8 @@ rbusCoreError_t rbus_discoverObjectElements(const char * object, int * count, ch
     if((NULL == object) || (NULL == elements) || (NULL == count))
     {
         RBUSCORELOG_ERROR("Object/elements/count is NULL");
-        return RBUSCORE_ERROR_INVALID_PARAM;
+        ret = RBUSCORE_ERROR_INVALID_PARAM;
+        goto exit;
     }
 
     rtMessage_Create(&msg);
@@ -2046,6 +2050,8 @@ rbusCoreError_t rbus_discoverObjectElements(const char * object, int * count, ch
     {
         ret = RBUSCORE_ERROR_GENERAL;
     }
+
+exit:
     if (ret != RBUSCORE_SUCCESS)
     {
         if (elements)
@@ -2063,17 +2069,16 @@ rbusCoreError_t rbus_discoverElementObjects(const char* element, int * count, ch
     rtMessage msg, rsp;
 
     rtMessage_Create(&msg);
-    if(NULL != element)
+
+    if((NULL == element) || (NULL == count) || (NULL == objects))
     {
-        rtMessage_SetInt32(msg, RTM_DISCOVERY_COUNT, 1);
-        rtMessage_AddString(msg, RTM_DISCOVERY_ITEMS, element);
-    }
-    else
-    {
-        RBUSCORELOG_ERROR("Null entries in element list.");
+        RBUSCORELOG_ERROR("element/count/objects is NULL");
         rtMessage_Release(msg);
-        return RBUSCORE_ERROR_INVALID_PARAM;
+        ret= RBUSCORE_ERROR_INVALID_PARAM;
+        goto exit;
     }
+    rtMessage_SetInt32(msg, RTM_DISCOVERY_COUNT, 1);
+    rtMessage_AddString(msg, RTM_DISCOVERY_ITEMS, element);
 
     err = rtConnection_SendRequest(g_connection, msg, RTM_DISCOVER_ELEMENT_OBJECTS, &rsp, TIMEOUT_VALUE_FIRE_AND_FORGET);
 
@@ -2128,6 +2133,8 @@ rbusCoreError_t rbus_discoverElementObjects(const char* element, int * count, ch
     {
         ret = RBUSCORE_ERROR_MALFORMED_RESPONSE;
     }
+
+exit:
     if (ret != RBUSCORE_SUCCESS)
     {
         if (objects)
@@ -2149,7 +2156,8 @@ rbusCoreError_t rbus_discoverElementsObjects(int numElements, const char** eleme
     if((NULL == objects) || (NULL == count))
     {
         RBUSCORELOG_ERROR("Object/count is NULL");
-        return RBUSCORE_ERROR_INVALID_PARAM;
+        ret = RBUSCORE_ERROR_INVALID_PARAM;
+        goto exit;
     }
     *count = 0;
 
@@ -2255,6 +2263,8 @@ rbusCoreError_t rbus_discoverElementsObjects(int numElements, const char** eleme
             free(array_ptr);
         }
     }
+
+exit:
     if (ret != RBUSCORE_SUCCESS)
     {
         if (objects)
@@ -2273,6 +2283,13 @@ rbusCoreError_t rbus_discoverRegisteredComponents(int * count, char *** componen
     rtMessage out;
     rtMessage_Create(&out);
     rtMessage_SetInt32(out, "dummy", 0);
+
+    if(count == NULL || components == NULL)
+    {
+        RBUSCORELOG_ERROR("Invalid parameters: count=%p components=%p", count, components);
+        ret = RBUSCORE_ERROR_INVALID_PARAM;
+        goto exit;
+    }
 
     if(NULL == g_connection)
     {
@@ -2327,6 +2344,8 @@ rbusCoreError_t rbus_discoverRegisteredComponents(int * count, char *** componen
         RBUSCORELOG_ERROR("Failed with error code %d", err);
         ret = RBUSCORE_ERROR_GENERAL;
     }
+
+exit:
     if (ret != RBUSCORE_SUCCESS)
     {
         if (components)

@@ -723,3 +723,294 @@ TEST_F(MultipleObjectsTest, rbus_multipleElement_test7)
         printf("fork failed.\n");
     }
 }
+
+TEST_F(MultipleObjectsTest, rbus_discover_wildcard_test)
+{
+    int counter = 8;
+    char client_name[] = "TEST_CLIENT_DISCOVER";
+    bool conn_status = false;
+    char** destinations = NULL;
+    int count = 0;
+
+    pid_t pid = fork();
+    if(pid == 0)
+    {
+        CREATE_RBUS_SERVER_ELEMENTS(counter, 5);
+        printf("********** SERVER ENTERING PAUSED STATE******************** \n");
+        pause();
+    }
+    else if (pid > 0)
+    {
+        sleep(2);
+        conn_status = OPEN_BROKER_CONNECTION1(client_name);
+        ASSERT_TRUE(conn_status);
+
+        // Test NULL parameters
+        EXPECT_EQ(rbus_discoverWildcardDestinations(NULL, &count, &destinations), RBUSCORE_ERROR_INVALID_PARAM);
+        EXPECT_EQ(rbus_discoverWildcardDestinations("student_info.*", NULL, &destinations), RBUSCORE_ERROR_INVALID_PARAM);
+        EXPECT_EQ(rbus_discoverWildcardDestinations("student_info.*", &count, NULL), RBUSCORE_ERROR_INVALID_PARAM);
+
+        count = 0;
+        destinations = NULL;
+        // Test valid discovery
+        EXPECT_EQ(rbus_discoverWildcardDestinations("student_info.*", &count, &destinations), RBUSCORE_SUCCESS);
+
+        if(destinations)
+        {
+            for(int i = 0; i < count; i++)
+            {
+                if(destinations[i])
+                {
+                    printf("Discovered destination %d: %s\n", i, destinations[i]);
+                    free(destinations[i]);
+                }
+            }
+            free(destinations);
+            destinations = NULL;
+        }
+
+        if(conn_status)
+            CLOSE_BROKER_CONNECTION1();
+
+        kill(pid, SIGTERM);
+    }
+}
+
+TEST_F(MultipleObjectsTest, rbus_discover_elements_test)
+{
+    int counter = 9;
+    char client_name[] = "TEST_CLIENT_DISCOVER";
+    bool conn_status = false;
+    char** elements = NULL;
+    int count = 0;
+
+    pid_t pid = fork();
+    if(pid == 0)
+    {
+        CREATE_RBUS_SERVER_ELEMENTS(counter, 5);
+        printf("********** SERVER ENTERING PAUSED STATE******************** \n");
+        pause();
+    }
+    else if (pid > 0)
+    {
+        sleep(2);
+        conn_status = OPEN_BROKER_CONNECTION1(client_name);
+        ASSERT_TRUE(conn_status);
+
+        // Test NULL parameters
+        EXPECT_EQ(rbus_discoverObjectElements(NULL, &count, &elements), RBUSCORE_ERROR_INVALID_PARAM);
+        EXPECT_EQ(rbus_discoverObjectElements("student_info.obj", NULL, &elements), RBUSCORE_ERROR_INVALID_PARAM);
+        EXPECT_EQ(rbus_discoverObjectElements("student_info.obj", &count, NULL), RBUSCORE_ERROR_INVALID_PARAM);
+
+        count = 0;
+        elements = NULL;
+        // Test valid discovery
+        EXPECT_EQ(rbus_discoverObjectElements("student_info.obj", &count, &elements), RBUSCORE_SUCCESS);
+
+        if(elements)
+        {
+            for(int i = 0; i < count; i++)
+            {
+                if(elements[i])
+                {
+                    printf("Discovered element %d: %s\n", i, elements[i]);
+                    free(elements[i]);
+                }
+            }
+            free(elements);
+            elements = NULL;
+        }
+
+        if(conn_status)
+            CLOSE_BROKER_CONNECTION1();
+
+        kill(pid, SIGTERM);
+    }
+}
+
+TEST_F(MultipleObjectsTest, rbus_discover_element_objects_test)
+{
+    int counter = 10;
+    char client_name[] = "TEST_CLIENT_DISCOVER";
+    bool conn_status = false;
+    char** objects = NULL;
+    int count = 0;
+    rbusCoreError_t err;
+
+    pid_t pid = fork();
+    if(pid == 0)
+    {
+        CREATE_RBUS_SERVER_ELEMENTS(counter, 5);
+        printf("********** SERVER ENTERING PAUSED STATE******************** \n");
+        pause();
+    }
+    else if (pid > 0)
+    {
+        sleep(2);
+        conn_status = OPEN_BROKER_CONNECTION1(client_name);
+        ASSERT_TRUE(conn_status);
+
+        // Test NULL parameters
+        EXPECT_EQ(rbus_discoverElementObjects(NULL, &count, &objects), RBUSCORE_ERROR_INVALID_PARAM);
+        EXPECT_EQ(rbus_discoverElementObjects("student_info.obj.element1", &count, NULL), RBUSCORE_ERROR_INVALID_PARAM);
+
+        count =0;
+        objects = NULL;
+        // Test valid discovery
+        err = rbus_discoverElementObjects("student_info.obj.element1", &count, &objects);
+        EXPECT_EQ(err, RBUSCORE_SUCCESS);
+
+        if(err == RBUSCORE_SUCCESS && objects)
+        {
+            for(int i = 0; i < count; i++)
+            {
+                if(objects[i])
+                {
+                    printf("Discovered objects %d: %s\n", i, objects[i]);
+                    free(objects[i]);
+                }
+            }
+            free(objects);
+            objects = NULL;
+        }
+
+        if(conn_status)
+            CLOSE_BROKER_CONNECTION1();
+
+        kill(pid, SIGTERM);
+    }
+}
+
+TEST_F(MultipleObjectsTest, rbus_discover_components_test)
+{
+    char client_name[] = "TEST_CLIENT_DISCOVER";
+    bool conn_status = false;
+    char** components = NULL;
+    int count = 0;
+
+    conn_status = OPEN_BROKER_CONNECTION1(client_name);
+    ASSERT_TRUE(conn_status);
+
+    // Test NULL parameters
+    EXPECT_EQ(rbus_discoverRegisteredComponents(NULL, &components), RBUSCORE_ERROR_INVALID_PARAM);
+    EXPECT_EQ(rbus_discoverRegisteredComponents(&count, NULL), RBUSCORE_ERROR_INVALID_PARAM);
+
+    // Test valid discovery
+    EXPECT_EQ(rbus_discoverRegisteredComponents(&count, &components), RBUSCORE_SUCCESS);
+
+    for(int i = 0; i < count; i++)
+    {
+        printf("Discovered component %d: %s\n", i, components[i]);
+        free(components[i]);
+    }
+    free(components);
+
+    if(conn_status)
+        CLOSE_BROKER_CONNECTION1();
+}
+#if 0
+TEST_F(MultipleObjectsTest, rbus_discover_cleanup_test1)
+{
+    char client_name[] = "TEST_CLIENT_DISCOVER";
+    bool conn_status = false;
+    char** destinations = NULL;
+    int count = 5; // Initialize with non-zero value
+
+    conn_status = OPEN_BROKER_CONNECTION1(client_name);
+    ASSERT_TRUE(conn_status);
+
+    // Test invalid parameters - verify count is preserved and destinations not modified
+    EXPECT_EQ(rbus_discoverWildcardDestinations(NULL, &count, &destinations), RBUSCORE_ERROR_INVALID_PARAM);
+    EXPECT_EQ(count, 0); // Count should be reset
+    EXPECT_EQ(destinations, nullptr); // Destinations should not be modified
+
+    // Test with invalid expression but valid pointers
+    count = 5;
+    destinations = (char**)0xdeadbeef; // Invalid but non-null pointer
+    EXPECT_EQ(rbus_discoverWildcardDestinations("", &count, &destinations), RBUSCORE_ERROR_INVALID_PARAM);
+    EXPECT_EQ(destinations, nullptr); // Should be set to NULL on error
+    EXPECT_EQ(count, 0); // Should be set to 0 on error
+
+    if(conn_status)
+        CLOSE_BROKER_CONNECTION1();
+}
+
+TEST_F(MultipleObjectsTest, rbus_discover_cleanup_test2)
+{
+    char client_name[] = "TEST_CLIENT_DISCOVER";
+    bool conn_status = false;
+    char** elements = NULL;
+    int count = 5;
+
+    conn_status = OPEN_BROKER_CONNECTION1(client_name);
+    ASSERT_TRUE(conn_status);
+
+    // Test invalid parameters
+    EXPECT_EQ(rbus_discoverObjectElements(NULL, &count, &elements), RBUSCORE_ERROR_INVALID_PARAM);
+    EXPECT_EQ(count, 0); // Count should be set to 0
+    EXPECT_EQ(elements, nullptr); // Elements should be set to NULL
+
+    // Test with empty object name
+    count = 5;
+    elements = (char**)0xdeadbeef;
+    EXPECT_EQ(rbus_discoverObjectElements("", &count, &elements), RBUSCORE_ERROR_INVALID_PARAM);
+    EXPECT_EQ(elements, nullptr);
+    EXPECT_EQ(count, 0);
+
+    if(conn_status)
+        CLOSE_BROKER_CONNECTION1();
+}
+
+TEST_F(MultipleObjectsTest, rbus_discover_cleanup_test3)
+{
+    char client_name[] = "TEST_CLIENT_DISCOVER";
+    bool conn_status = false;
+    char** objects = NULL;
+    int count = 5;
+
+    conn_status = OPEN_BROKER_CONNECTION1(client_name);
+    ASSERT_TRUE(conn_status);
+
+    // Test with non-existent element
+    EXPECT_EQ(rbus_discoverElementObjects("non.existent.element", &count, &objects), RBUSCORE_SUCCESS);
+    EXPECT_EQ(count, 0); // Count should be 0 for non-existent element
+    EXPECT_EQ(objects, nullptr); // Objects should be NULL
+
+    // Test with invalid element
+    count = 5;
+    objects = (char**)0xdeadbeef;
+    EXPECT_EQ(rbus_discoverElementObjects("", &count, &objects), RBUSCORE_ERROR_INVALID_PARAM);
+    EXPECT_EQ(objects, nullptr);
+    EXPECT_EQ(count, 0);
+
+    if(conn_status)
+        CLOSE_BROKER_CONNECTION1();
+}
+
+TEST_F(MultipleObjectsTest, rbus_discover_cleanup_test4)
+{
+    char client_name[] = "TEST_CLIENT_DISCOVER";
+    bool conn_status = false;
+    const char* elements[] = {"non.existent.element1", "non.existent.element2"};
+    char** objects = NULL;
+    int count = 5;
+
+    conn_status = OPEN_BROKER_CONNECTION1(client_name);
+    ASSERT_TRUE(conn_status);
+
+    // Test with non-existent elements array
+    EXPECT_EQ(rbus_discoverElementsObjects(2, elements, &count, &objects), RBUSCORE_SUCCESS);
+    EXPECT_EQ(count, 0); // Count should be 0 for non-existent elements
+    EXPECT_EQ(objects, nullptr); // Objects should be NULL
+
+    // Test with NULL elements array
+    count = 5;
+    objects = (char**)0xdeadbeef;
+    EXPECT_EQ(rbus_discoverElementsObjects(2, NULL, &count, &objects), RBUSCORE_ERROR_INVALID_PARAM);
+    EXPECT_EQ(objects, nullptr);
+    EXPECT_EQ(count, 0);
+
+    if(conn_status)
+        CLOSE_BROKER_CONNECTION1();
+}
+#endif
