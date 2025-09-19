@@ -6141,6 +6141,7 @@ typedef struct _rbusMethodInvokeAsyncData_t
     rbusObject_t inParams;
     rbusMethodAsyncRespHandler_t callback;
     int timeout;
+    int transactionID;
 } rbusMethodInvokeAsyncData_t;
 
 static void* rbusMethod_InvokeAsyncThreadFunc(void *p)
@@ -6157,7 +6158,7 @@ static void* rbusMethod_InvokeAsyncThreadFunc(void *p)
         &outParams,
         data->timeout);
 
-    data->callback(data->handle, data->methodName, err, outParams);
+    data->callback(data->handle, data->methodName, err, outParams, data->transactionID);
 
     rbusObject_Release(data->inParams);
     if(outParams)
@@ -6173,7 +6174,8 @@ rbusError_t rbusMethod_InvokeAsync(
     char const* methodName,
     rbusObject_t inParams,
     rbusMethodAsyncRespHandler_t callback,
-    int timeout)
+    int timeout,
+    int transactionID)
 {
     VERIFY_HANDLE(handle);
     VERIFY_NULL(methodName);
@@ -6195,6 +6197,7 @@ rbusError_t rbusMethod_InvokeAsync(
     data->inParams = inParams;
     data->callback = callback;
     data->timeout = timeout > 0 ? (timeout * 1000) : (int)rbusHandle_FetchSetTimeout(handle); /* convert seconds to milliseconds */
+    data->transactionID = transactionID;
 
     if((err = pthread_create(&pid, NULL, rbusMethod_InvokeAsyncThreadFunc, data)) != 0)
     {

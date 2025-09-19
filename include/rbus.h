@@ -343,7 +343,8 @@ typedef void (*rbusMethodAsyncRespHandler_t)(
     rbusHandle_t handle, 
     char const* methodName, 
     rbusError_t error,
-    rbusObject_t params
+    rbusObject_t params,
+    int transactionID
 );
 
 /** @addtogroup Providers
@@ -1842,7 +1843,8 @@ rbusError_t rbusMethod_InvokeAsync(
     char const* methodName, 
     rbusObject_t inParams, 
     rbusMethodAsyncRespHandler_t callback, 
-    int timeout);
+    int timeout,
+    int transactionID);
 
 /** @} */
 

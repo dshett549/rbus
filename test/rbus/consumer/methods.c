@@ -56,11 +56,12 @@ static void asyncMethodHandler1(
     rbusHandle_t handle, 
     char const* methodName, 
     rbusError_t error,
-    rbusObject_t params)
+    rbusObject_t params,
+    int transactionID)
 {
     (void)handle;
 
-    printf("asyncMethodHandler1 called: method=%s  error=%d\n", methodName, error);
+    printf("asyncMethodHandler1 called: method=%s  error=%d transactionID=%d\n", methodName, error, transactionID);
 
     asyncCalled = true;
 
@@ -76,11 +77,12 @@ static void asyncMethodHandler2(
     rbusHandle_t handle, 
     char const* methodName, 
     rbusError_t error,
-    rbusObject_t params)
+    rbusObject_t params,
+    int transactionID)
 {
     (void)handle;
 
-    printf("asyncMethodHandler2 called: method=%s  error=%d\n", methodName, error);
+    printf("asyncMethodHandler2 called: method=%s  error=%d transactionID=%d\n", methodName, error, transactionID);
 
     asyncCount++;
 
@@ -96,11 +98,12 @@ static void asyncMethodHandler3(
     rbusHandle_t handle,
     char const* methodName,
     rbusError_t error,
-    rbusObject_t params)
+    rbusObject_t params,
+    int transactionID)
 {
     (void)handle;
 
-    printf("asyncMethodHandler3 called: method=%s  error=%d\n", methodName, error);
+    printf("asyncMethodHandler3 called: method=%s  error=%d transactionID=%d\n", methodName, error, transactionID);
 
     asyncCount++;
 
@@ -122,6 +125,8 @@ void testMethods(rbusHandle_t handle, int* countPass, int* countFail)
     rbusObject_t outParams;
     rbusValue_t value;
     int i, rc;
+
+    srand((unsigned int)time(NULL));
 
     if((err = rbusTable_addRow(handle, "Device.TestProvider.Table1.", "method1", &instNum1)) != RBUS_ERROR_SUCCESS)
     {
@@ -233,7 +238,8 @@ void testMethods(rbusHandle_t handle, int* countPass, int* countFail)
     printf("\n##########################################\n# TEST rbusMethod_InvokeAsync(%s, 0) \n#\n", "Device.TestProvider.MethodAsync1()");
     asyncCalled = false;
     asyncError = RBUS_ERROR_SUCCESS;
-    err = rbusMethod_InvokeAsync(handle, "Device.TestProvider.MethodAsync1()", inParams, asyncMethodHandler1, 0);
+    int transID = rand();
+    err = rbusMethod_InvokeAsync(handle, "Device.TestProvider.MethodAsync1()", inParams, asyncMethodHandler1, 0, transID);
     printf("consumer: rbusMethod_InvokeAsync(%s) %s\n", "Device.TestProvider.MethodAsync1()",
         err == RBUS_ERROR_SUCCESS ? "success" : "fail");
     TEST(err == RBUS_ERROR_SUCCESS);
@@ -246,7 +252,8 @@ void testMethods(rbusHandle_t handle, int* countPass, int* countFail)
     printf("\n##########################################\n# TEST rbusMethod_InvokeAsync(%s, 2) \n#\n", "Device.TestProvider.MethodAsync1()");
     asyncCalled = false;
     asyncError = RBUS_ERROR_TIMEOUT;
-    err = rbusMethod_InvokeAsync(handle, "Device.TestProvider.MethodAsync1()", inParams, asyncMethodHandler1, 2);
+    int transID1 = rand();
+    err = rbusMethod_InvokeAsync(handle, "Device.TestProvider.MethodAsync1()", inParams, asyncMethodHandler1, 2, transID1);
     printf("consumer: rbusMethod_InvokeAsync(%s) %s\n", "Device.TestProvider.MethodAsync1()",
         err == RBUS_ERROR_SUCCESS ? "success" : "fail");
     TEST(err == RBUS_ERROR_SUCCESS);
@@ -260,7 +267,8 @@ void testMethods(rbusHandle_t handle, int* countPass, int* countFail)
     printf("\n##########################################\n# TEST rbusMethod_InvokeAsync(%s, 0) \n#\n", "Device.TestProvider.Table1.[method1].MethodAsync2()");
     asyncCount = 0;
     asyncError = RBUS_ERROR_SUCCESS;
-    err = rbusMethod_InvokeAsync(handle, "Device.TestProvider.Table1.[method1].MethodAsync2()", inParams, asyncMethodHandler2, 0);
+    int transactionID = rand();
+    err = rbusMethod_InvokeAsync(handle, "Device.TestProvider.Table1.[method1].MethodAsync2()", inParams, asyncMethodHandler2, 0, transactionID);
     printf("consumer: rbusMethod_InvokeAsync(%s) %s\n", "Device.TestProvider.Table1.[method1].MethodAsync2()",
         err == RBUS_ERROR_SUCCESS ? "success" : "fail");
     TEST(err == RBUS_ERROR_SUCCESS);
@@ -273,7 +281,8 @@ void testMethods(rbusHandle_t handle, int* countPass, int* countFail)
     printf("\n##########################################\n# TEST rbusMethod_InvokeAsync(%s, 0) \n#\n", "Device.TestProvider.MethodAsync3()");
     asyncCount = 0;
     asyncError = RBUS_ERROR_SUCCESS;
-    err = rbusMethod_InvokeAsync(handle, "Device.TestProvider.MethodAsync3()", inParams, asyncMethodHandler3, 0);
+    int transactionID2 = rand();
+    err = rbusMethod_InvokeAsync(handle, "Device.TestProvider.MethodAsync3()", inParams, asyncMethodHandler3, 0, transactionID2);
     printf("consumer: rbusMethod_InvokeAsync(%s) %s\n", "Device.TestProvider.MethodAsync3()",
         err == RBUS_ERROR_SUCCESS ? "success" : "fail");
     TEST(err == RBUS_ERROR_SUCCESS);
@@ -298,7 +307,8 @@ void testMethods(rbusHandle_t handle, int* countPass, int* countFail)
         rbusValue_SetInt32(value, i);
         rbusObject_SetValue(inParams2, "param1", value);
         rbusValue_Release(value);
-        err = rbusMethod_InvokeAsync(handle, "Device.TestProvider.Table1.[method1].MethodAsync2()", inParams2, asyncMethodHandler2, 0);
+        int transactionID3 = rand();
+        err = rbusMethod_InvokeAsync(handle, "Device.TestProvider.Table1.[method1].MethodAsync2()", inParams2, asyncMethodHandler2, 0, transactionID3);
         printf("consumer: rbusMethod_InvokeAsync(%s) %s\n", "Device.TestProvider.Table1.[method1].MethodAsync2()",
             err == RBUS_ERROR_SUCCESS ? "success" : "fail");
         TEST(err == RBUS_ERROR_SUCCESS);
@@ -322,7 +332,8 @@ void testMethods(rbusHandle_t handle, int* countPass, int* countFail)
     printf("\n##########################################\n# TEST rbusMethod_InvokeAsync(%s) \n#\n", "Device.TestProvider.ShouldNotExist()");
     asyncCalled = false;
     asyncError = RBUS_ERROR_DESTINATION_NOT_FOUND;
-    err = rbusMethod_InvokeAsync(handle, "Device.TestProvider.ShouldNotExist()", inParams, asyncMethodHandler1, 0);
+    int transactionID4 = rand();
+    err = rbusMethod_InvokeAsync(handle, "Device.TestProvider.ShouldNotExist()", inParams, asyncMethodHandler1, 0, transactionID4);
     printf("consumer: rbusMethod_InvokeAsync(%s) %s\n", "Device.TestProvider.ShouldNotExist()",
         err == RBUS_ERROR_SUCCESS ? "success" : "fail");
     TEST(err == RBUS_ERROR_SUCCESS);
