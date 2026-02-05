@@ -228,7 +228,7 @@ static rtError rtConnection_SendInternal(
   char const* topic,
   char const* reply_topic,
   int flags,
-  int32_t sequence_number,
+  uint32_t sequence_number,
   int64_t T1,
   int64_t T2,
   int64_t T3);
