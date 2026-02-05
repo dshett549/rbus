@@ -228,10 +228,10 @@ static rtError rtConnection_SendInternal(
   char const* topic,
   char const* reply_topic,
   int flags,
-  uint32_t sequence_number,
-  uint32_t T1,
-  uint32_t T2,
-  uint32_t T3);
+  int32_t sequence_number,
+  int64_t T1,
+  int64_t T2,
+  int64_t T3);
 
 rtError
 rtConnection_SendRequestInternal(
@@ -959,7 +959,7 @@ rtConnection_SendBinaryResponse(rtConnection con, rtMessageHeader const* request
   pthread_mutex_lock(&con->mutex);
 #ifdef MSG_ROUNDTRIP_TIME
   err = rtConnection_SendInternal(con, p, n, request_hdr->reply_topic, request_hdr->topic,
-    rtMessageFlags_Response|rtMessageFlags_RawBinary, request_hdr->sequence_number, request_hdr->T1, request_hdr->T2, request_hdr->T3);
+    rtMessageFlags_Response|rtMessageFlags_RawBinary, request_hdr->sequence_number, (int64_t)request_hdr->T1, (int64_t)request_hdr->T2, (int64_t)request_hdr->T3);
 #else
   err = rtConnection_SendInternal(con, p, n, request_hdr->reply_topic, request_hdr->topic,
     rtMessageFlags_Response|rtMessageFlags_RawBinary, request_hdr->sequence_number, 0, 0, 0);
