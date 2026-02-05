@@ -1109,7 +1109,7 @@ dequeue_and_continue:
 
 rtError
 rtConnection_SendInternal(rtConnection con, uint8_t const* buff, uint32_t n, char const* topic,
-  char const* reply_topic, int flags, uint32_t sequence_number, uint32_t T1, uint32_t T2, uint32_t T3)
+  char const* reply_topic, int flags, uint32_t sequence_number, int64_t T1, int64_t T2, int64_t T3)
 {
   rtError err;
   int num_attempts;
