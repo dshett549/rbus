@@ -515,7 +515,7 @@ rtConnection_ReadUntil(rtConnection con, uint8_t* buff, int count, int32_t timeo
 }
 
 static void
-rtConnection_DestroyOnFailure(rtConnection c, int mutex_init, int callback_mutex_init, int reconnect_mutex_init, int cond_init, int mutex_attr_init, pthread_mutexattr_t* mutex_attribute)
+rtConnection_DestroyOnFailure(rtConnection c)
 {
     if (c)
     {
@@ -539,18 +539,8 @@ rtConnection_DestroyOnFailure(rtConnection c, int mutex_init, int callback_mutex
       {
         rtList_Destroy(c->callback_message_list, NULL);
       }
-      if (mutex_init)
-        pthread_mutex_destroy(&c->mutex);
-      if (callback_mutex_init)
-        pthread_mutex_destroy(&c->callback_message_mutex);
-      if (reconnect_mutex_init)
-        pthread_mutex_destroy(&c->reconnect_mutex);
-      if (cond_init)
-        pthread_cond_destroy(&c->callback_message_cond);
       free(c);
     }
-    if (mutex_attr_init && mutex_attribute)
-      pthread_mutexattr_destroy(mutex_attribute);
 }
 
 static rtError
@@ -559,9 +549,6 @@ rtConnection_CreateInternal(rtConnection* con, char const* application_name, cha
   int i = 0;
   rtError err = RT_OK;
 
-  int mutex_init = 0, callback_mutex_init = 0, reconnect_mutex_init = 0, cond_init = 0;
-  int mutex_attr_init = 0;
-
   rtConnection c = (rtConnection) rt_try_malloc(sizeof(struct _rtConnection));
   if (!c)
     return rtErrorFromErrno(ENOMEM);
@@ -569,30 +556,18 @@ rtConnection_CreateInternal(rtConnection* con, char const* application_name, cha
   memset(c, 0, sizeof(struct _rtConnection));
 
   pthread_mutexattr_t mutex_attribute;
-  if (pthread_mutexattr_init(&mutex_attribute) == 0)
-  {
-    mutex_attr_init = 1;
-    pthread_mutexattr_settype(&mutex_attribute, PTHREAD_MUTEX_ERRORCHECK);
-  }
-
-  if (mutex_attr_init)
-  {
-    if (0 == pthread_mutex_init(&c->mutex, &mutex_attribute))
-      mutex_init = 1;
-    if (0 == pthread_mutex_init(&c->callback_message_mutex, &mutex_attribute))
-      callback_mutex_init = 1;
-    if (0 == pthread_mutex_init(&c->reconnect_mutex, &mutex_attribute))
-      reconnect_mutex_init = 1;
-  }
-  if (0 == pthread_cond_init(&c->callback_message_cond, NULL))
-    cond_init = 1;
-
-  if (!(mutex_attr_init && mutex_init && callback_mutex_init && reconnect_mutex_init))
-  {
-    rtLog_Error("Could not initialize mutex or mutex attribute. Cannot create connection.");
-    rtConnection_DestroyOnFailure(c, mutex_init, callback_mutex_init, reconnect_mutex_init, cond_init, mutex_attr_init, &mutex_attribute);
-    return RT_ERROR;
-  }
+  if (pthread_mutexattr_init(&mutex_attribute) != 0)
+    goto fail_c;
+  if (pthread_mutexattr_settype(&mutex_attribute, PTHREAD_MUTEX_ERRORCHECK) != 0)
+    goto fail_mutexattr;
+  if (pthread_mutex_init(&c->mutex, &mutex_attribute) != 0)
+    goto fail_mutexattr;
+  if (pthread_mutex_init(&c->callback_message_mutex, &mutex_attribute) != 0)
+    goto fail_mutex;
+  if (pthread_mutex_init(&c->reconnect_mutex, &mutex_attribute) != 0)
+    goto fail_callback_mutex;
+  if (pthread_cond_init(&c->callback_message_cond, NULL) != 0)
+    goto fail_reconnect_mutex;
 
   for (i = 0; i < RTMSG_LISTENERS_MAX; ++i)
   {
@@ -605,14 +580,12 @@ rtConnection_CreateInternal(rtConnection* con, char const* application_name, cha
   c->send_buffer = (uint8_t *) rt_try_malloc(RTMSG_SEND_BUFFER_SIZE);
   if(!c->send_buffer)
   {
-    rtConnection_DestroyOnFailure(c, mutex_init, callback_mutex_init, reconnect_mutex_init, cond_init, mutex_attr_init, &mutex_attribute);
-    return rtErrorFromErrno(ENOMEM);
+    goto cleanup;
   }
   c->recv_buffer = (uint8_t *) rt_try_malloc(RTMSG_SEND_BUFFER_SIZE);
   if(!c->recv_buffer)
   {
-    rtConnection_DestroyOnFailure(c, mutex_init, callback_mutex_init, reconnect_mutex_init, cond_init, mutex_attr_init, &mutex_attribute);
-    return rtErrorFromErrno(ENOMEM);
+    goto cleanup;
   }
   c->recv_buffer_capacity = RTMSG_SEND_BUFFER_SIZE;
   c->sequence_number = 1;
@@ -647,14 +620,12 @@ rtConnection_CreateInternal(rtConnection* con, char const* application_name, cha
   if (err != RT_OK)
   {
     rtLog_Warn("failed to parse:%s. %s", router_config, rtStrError(err));
-    rtConnection_DestroyOnFailure(c, mutex_init, callback_mutex_init, reconnect_mutex_init, cond_init, mutex_attr_init, &mutex_attribute);
-    return err;
+    goto cleanup;
   }
   err = rtConnection_ConnectAndRegister(c, 0);
   if (err != RT_OK)
   {
     rtLog_Warn("rtConnection_ConnectAndRegister(1):%d", err);
-    rtConnection_DestroyOnFailure(c, mutex_init, callback_mutex_init, reconnect_mutex_init, cond_init, mutex_attr_init, &mutex_attribute);
   }
 
   if (err == RT_OK)
@@ -662,11 +633,22 @@ rtConnection_CreateInternal(rtConnection* con, char const* application_name, cha
     rtConnection_AddListenerWithId(c, c->inbox_name, RTCONNECTION_CREATE_EXPRESSION_ID, onDefaultMessage, c);
     rtConnection_StartThreads(c);
     *con = c;
-  }
-
-  if (mutex_attr_init)
     pthread_mutexattr_destroy(&mutex_attribute);
-  return err;
+    return RT_OK;
+  }
+cleanup:
+  pthread_cond_destroy(&c->callback_message_cond);
+fail_reconnect_mutex:
+  pthread_mutex_destroy(&c->reconnect_mutex);
+fail_callback_mutex:
+  pthread_mutex_destroy(&c->callback_message_mutex);
+fail_mutex:
+  pthread_mutex_destroy(&c->mutex);
+fail_mutexattr:
+  pthread_mutexattr_destroy(&mutex_attribute);
+fail_c:
+  rtConnection_DestroyOnFailure(c);
+  return err ? err : RT_ERROR;
 }
 
 rtError
