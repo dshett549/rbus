@@ -603,16 +603,25 @@ rtRouteDirect_StartInstance(const char* socket_name, rtDriectClientHandler messa
     return RT_ERROR;
   }
 
+  if (strncmp(socket_name, "unix://", 7) == 0)
+  {
+    char const* socket_path = &socket_name[7];
+    static char const direct_socket_prefix[] = "/tmp/.direct_";
+
+    if (strncmp(socket_path, direct_socket_prefix, sizeof(direct_socket_prefix) - 1) != 0 ||
+        strchr(socket_path + sizeof(direct_socket_prefix) - 1, '/') != NULL ||
+        strstr(socket_path + sizeof(direct_socket_prefix) - 1, "..") != NULL)
+    {
+      rtLog_Warn("Rejected unsafe private Unix socket path: %s", socket_path);
+      return RT_ERROR_INVALID_ARG;
+    }
+  }
+
   pthread_once(&_rtDirectRoute_once, &_rtdirect_route_thread_specific_key);
   pthread_setspecific(_rtDirectRoute_key, messageHandler);
 
   if (RT_OK != rtRouteBase_BindListener(socket_name, 1, 1, &myDirectListener))
   {
-    if (strncmp(socket_name, "unix://", 7) == 0)
-    {
-      if (remove(&socket_name[7]) != 0)
-        rtLog_Warn("Failed to remove socket file %s", &socket_name[7]);
-    }
     return RT_FAIL;
   }
 
