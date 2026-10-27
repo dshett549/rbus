@@ -291,6 +291,26 @@ static void exec_encode_decode_tlv_test(rbusValueType_t type,void *buf)
   rbusValue_Release(valIn);
 }
 
+TEST(rbusValueTest, set_tlv_rejects_invalid_lengths_and_types)
+{
+  rbusValue_t value = NULL;
+  uint32_t data = 0x12345678;
+  uint8_t oversizedDateTime[sizeof(rbusDateTime_t) + 16] = {};
+
+  rbusValue_Init(&value);
+
+  rbusValue_SetTLV(value, RBUS_INT32, sizeof(data) - 1, &data);
+  EXPECT_EQ(RBUS_NONE, rbusValue_GetType(value));
+  rbusValue_SetTLV(value, RBUS_INT32, sizeof(data) + 1, &data);
+  EXPECT_EQ(RBUS_NONE, rbusValue_GetType(value));
+  rbusValue_SetTLV(value, RBUS_DATETIME, sizeof(oversizedDateTime), oversizedDateTime);
+  EXPECT_EQ(RBUS_NONE, rbusValue_GetType(value));
+  rbusValue_SetTLV(value, (rbusValueType_t)0xFFFF, sizeof(data), &data);
+  EXPECT_EQ(RBUS_NONE, rbusValue_GetType(value));
+
+  rbusValue_Release(value);
+}
+
 TEST(rbusValueTest, validate_datetime1)
 {
   time_t rawtime;

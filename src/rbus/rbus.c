@@ -22,6 +22,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <limits.h>
 #include <pthread.h>
 #include <unistd.h>
 #include <rtVector.h>
@@ -481,6 +482,43 @@ static bool _parse_rbusData_to_value (char const* pBuff, rbusLegacyDataType_t le
 //*************************** SERIALIZE/DERIALIZE FUNCTIONS ***************************//
 #define DEBUG_SERIALIZER 0
 
+static bool _isValidTLV(rbusValueType_t type, uint32_t length, uint8_t const* value)
+{
+    size_t expectedLength;
+
+    if (type == RBUS_NONE)
+        return length == 0;
+
+    if (!value)
+        return false;
+
+    switch(type)
+    {
+    case RBUS_STRING:
+        return length > 0 && length <= INT_MAX &&
+            memchr(value, '\0', length) == value + length - 1;
+    case RBUS_BYTES:
+        return length <= INT_MAX;
+    case RBUS_BOOLEAN: expectedLength = sizeof(bool); break;
+    case RBUS_CHAR:    expectedLength = sizeof(char); break;
+    case RBUS_BYTE:    expectedLength = sizeof(unsigned char); break;
+    case RBUS_INT8:    expectedLength = sizeof(int8_t); break;
+    case RBUS_UINT8:   expectedLength = sizeof(uint8_t); break;
+    case RBUS_INT16:   expectedLength = sizeof(int16_t); break;
+    case RBUS_UINT16:  expectedLength = sizeof(uint16_t); break;
+    case RBUS_INT32:   expectedLength = sizeof(int32_t); break;
+    case RBUS_UINT32:  expectedLength = sizeof(uint32_t); break;
+    case RBUS_INT64:   expectedLength = sizeof(int64_t); break;
+    case RBUS_UINT64:  expectedLength = sizeof(uint64_t); break;
+    case RBUS_SINGLE:  expectedLength = sizeof(float); break;
+    case RBUS_DOUBLE:  expectedLength = sizeof(double); break;
+    case RBUS_DATETIME: expectedLength = sizeof(rbusDateTime_t); break;
+    default:
+        return false;
+    }
+    return length == expectedLength;
+}
+
 rbusError_t rbusValue_initFromMessage(rbusValue_t* value, rbusMessage msg);
 void rbusValue_appendToMessage(char const* name, rbusValue_t value, rbusMessage msg);
 rbusError_t rbusProperty_initFromMessage(rbusProperty_t* property, rbusMessage msg);
@@ -497,9 +535,9 @@ void rbusFilter_InitFromMessage(rbusFilter_t* filter, rbusMessage msg);
 
 rbusError_t rbusValue_initFromMessage(rbusValue_t* value, rbusMessage msg)
 {
-    uint8_t const* data;
+    uint8_t const* data = NULL;
     bool rc = true;
-    uint32_t length;
+    uint32_t length = 0;
     int type;
     char const* pBuffer = NULL;
 
@@ -523,6 +561,8 @@ rbusError_t rbusValue_initFromMessage(rbusValue_t* value, rbusMessage msg)
         if(!rc)
         {
             RBUSLOG_WARN("RBUS_INVALID_INPUT");
+            rbusValue_Release(*value);
+            *value = NULL;
             return RBUS_ERROR_INVALID_INPUT;
         }
     }
@@ -589,11 +629,15 @@ rbusError_t rbusValue_initFromMessage(rbusValue_t* value, rbusMessage msg)
                     rbusValue_SetDouble(*value, (double)fval);
                     break;
                 case RBUS_DATETIME:
-                    rbusMessage_GetBytes(msg, &data, &length);
-                    rbusValue_SetTLV(*value, type, length, data);
-                    break;
                 default:
-                    rbusMessage_GetBytes(msg, &data, &length);
+                    if (rbusMessage_GetBytes(msg, &data, &length) != RT_OK ||
+                        !_isValidTLV(type, length, data))
+                    {
+                        RBUSLOG_WARN("rbusValue_initFromMessage: invalid TLV type=%d length=%u", type, length);
+                        rbusValue_Release(*value);
+                        *value = NULL;
+                        return RBUS_ERROR_INVALID_INPUT;
+                    }
                     rbusValue_SetTLV(*value, type, length, data);
                     break;
             }
@@ -627,9 +671,15 @@ rbusError_t rbusProperty_initFromMessage(rbusProperty_t* property, rbusMessage m
 
     rbusProperty_Init(property, name, NULL);
     err= rbusValue_initFromMessage(&value, msg);
+    if (err != RBUS_ERROR_SUCCESS)
+    {
+        rbusProperty_Release(*property);
+        *property = NULL;
+        return err;
+    }
     rbusProperty_SetValue(*property, value);
     rbusValue_Release(value);
-    return err;
+    return RBUS_ERROR_SUCCESS;
 }
 
 void rbusPropertyList_appendToMessage(rbusProperty_t prop, rbusMessage msg)
@@ -1510,6 +1560,7 @@ static void _set_callback_handler (rbusHandle_t handle, rbusMessage request, rbu
     int sessionId = 0;
     int numVals = 0;
     int loopCnt = 0;
+    int parsedProperties = 0;
     int rollBack = 0;
     char* pCompName = NULL;
     char* pIsCommit = NULL;
@@ -1542,6 +1593,12 @@ static void _set_callback_handler (rbusHandle_t handle, rbusMessage request, rbu
             for (loopCnt = 0; loopCnt < numVals; loopCnt++)
             {
                 rc = rbusProperty_initFromMessage(&pProperties[loopCnt], request);
+                parsedProperties++;
+                if (rc != RBUS_ERROR_SUCCESS)
+                {
+                    pFailedElement = pCompName;
+                    break;
+                }
             }
             if(rc != RBUS_ERROR_SUCCESS)
                 goto exit;
@@ -1555,7 +1612,7 @@ static void _set_callback_handler (rbusHandle_t handle, rbusMessage request, rbu
             if (strncasecmp("TRUE", pIsCommit, 4) == 0)
                 isCommit = true;
 
-            for (loopCnt = 0; loopCnt < numVals; loopCnt++)
+            for (loopCnt = 0; loopCnt < parsedProperties; loopCnt++)
             {
                 /* Retrive the element node */
                 char const* paramName = rbusProperty_GetName(pProperties[loopCnt]);
