@@ -2761,6 +2761,7 @@ static void _create_direct_connection_callback_handler (rbusHandle_t handle, rbu
     char const* paramName = NULL;
     char const* consumerToBrokerConf = NULL;
     int32_t consumerPID = 0;
+    int addressLength;
     char daemonAddress[RBUS_DAEMON_CONF_LENGTH] = "";
 
 
@@ -2771,48 +2772,74 @@ static void _create_direct_connection_callback_handler (rbusHandle_t handle, rbu
 
     rbusMessage_Init(response);
 
+    if (!consumerName || !paramName || !consumerToBrokerConf)
+    {
+        RBUSLOG_WARN("invalid direct connection parameters");
+        rbusMessage_SetInt32(*response, RBUSCORE_ERROR_INVALID_PARAM);
+        return;
+    }
+
     el = retrieveInstanceElementEx(handle, handleInfo->elementRoot, paramName, true);
 
     if (el)
     {
         if (0 == strncmp(consumerToBrokerConf, "unix", 4))
         {
-            snprintf (daemonAddress, RBUS_DAEMON_CONF_LENGTH, "unix:///tmp/.direct_%s_%s", __progname, consumerName);
+            addressLength = snprintf(daemonAddress, sizeof(daemonAddress), "unix:///tmp/.direct_%s_%s", __progname, consumerName);
+            if (addressLength < 0 || (size_t)addressLength >= sizeof(daemonAddress))
+                ret = RBUSCORE_ERROR_INVALID_PARAM;
         }
         else
         {
             char ip[128];
-            // the length of 6 for "tcp://"
-            char const* p = strrchr(consumerToBrokerConf + 6, ':');
-            if (!p)
+            char const* host;
+            char const* p;
+            size_t addressPrefixLength;
+
+            if (strnlen(consumerToBrokerConf, sizeof(daemonAddress)) >= sizeof(daemonAddress) ||
+                0 != strncmp(consumerToBrokerConf, "tcp://", 6))
             {
                 RBUSLOG_WARN("invalid address string:%s", consumerToBrokerConf);
                 ret = RBUSCORE_ERROR_INVALID_PARAM;
             }
             else
             {
-                rtString_Copy(ip, consumerToBrokerConf, (p - consumerToBrokerConf));
-                RBUSLOG_DEBUG ("parsing ip address:%s", ip);
+                host = consumerToBrokerConf + 6;
+                p = strrchr(host, ':');
+                addressPrefixLength = p ? (size_t)(p - consumerToBrokerConf) : 0;
+                if (!p || p == host || addressPrefixLength >= sizeof(ip))
+                {
+                    RBUSLOG_WARN("invalid address string:%s", consumerToBrokerConf);
+                    ret = RBUSCORE_ERROR_INVALID_PARAM;
+                }
+                else
+                {
+                    memcpy(ip, consumerToBrokerConf, addressPrefixLength);
+                    ip[addressPrefixLength] = '\0';
+                    RBUSLOG_DEBUG("parsing ip address:%s", ip);
 
-                //FIXME :: The port must be within 65535 and unique to the consumer.
-                // PID is something unique  but the same client can have direct connection to two different providers and that could lead to failure.
+                    //FIXME :: The port must be within 65535 and unique to the consumer.
+                    // PID is something unique  but the same client can have direct connection to two different providers and that could lead to failure.
 
-                // ex: if the consumer pid is 12345;
-                //          Provider1 may open a private session on 127.0.0.1:12345
-                //          Provider2 should not (could not) open private session on same address as 127.0.0.1:12345.
-                // Provider 2 have to come up with some other logic
+                    // ex: if the consumer pid is 12345;
+                    //          Provider1 may open a private session on 127.0.0.1:12345
+                    //          Provider2 should not (could not) open private session on same address as 127.0.0.1:12345.
+                    // Provider 2 have to come up with some other logic
 
-                // Note: On 32 Bit Linux, the max pid is 32768
-                // Note: On 64 Bit Linux, the max pid is 4194303
-                // Also, unique number free of 20, 21, 22, 80, 53, 123, 443, 8080, 10001(or actual rbus daemon port has to be arrived.
-                // May be we must engage session manager to generate
-                srand(time(NULL));
-                uint32_t port = 0;
-                do {
-                    port =  rand() % 65535;
-                } while (port < 8080);
+                    // Note: On 32 Bit Linux, the max pid is 32768
+                    // Note: On 64 Bit Linux, the max pid is 4194303
+                    // Also, unique number free of 20, 21, 22, 80, 53, 123, 443, 8080, 10001(or actual rbus daemon port has to be arrived.
+                    // May be we must engage session manager to generate
+                    srand(time(NULL));
+                    uint32_t port = 0;
+                    do {
+                        port =  rand() % 65535;
+                    } while (port < 8080);
 
-                snprintf (daemonAddress, RBUS_DAEMON_CONF_LENGTH, "%s:%u", ip, port);
+                    addressLength = snprintf(daemonAddress, sizeof(daemonAddress), "%s:%u", ip, port);
+                    if (addressLength < 0 || (size_t)addressLength >= sizeof(daemonAddress))
+                        ret = RBUSCORE_ERROR_INVALID_PARAM;
+                }
             }
         }
     }
