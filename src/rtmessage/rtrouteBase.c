@@ -396,7 +396,14 @@ rtConnectedClient_Read(rtConnectedClient* clnt, rtRouteEntry* myDirectRoute)
           break;
         }
         rtEncoder_DecodeUInt16(&itr, &header_length);
-        clnt->bytes_to_read += (header_length - RTMESSAGEHEADER_PREAMBLE_LENGTH);
+        if (header_length < RTMESSAGEHEADER_PREAMBLE_LENGTH ||
+            (size_t)header_length > clnt->read_buffer_capacity)
+        {
+          rtLog_Warn("Invalid header length %u from %s (buffer capacity %zu)",
+                     header_length, clnt->ident, clnt->read_buffer_capacity);
+          return RT_ERROR_INVALID_ARG;
+        }
+        clnt->bytes_to_read = (size_t)header_length;
         clnt->state = rtConnectionState_ReadHeader;
       }
     }
@@ -680,6 +687,12 @@ rtRouteDirect_StartInstance(const char* socket_name, rtDriectClientHandler messa
       if (err != RT_OK)
       {
         rtLog_Info("Private Client Exited. Lets shutdown the session");
+        if (myDirectClient->fd >= 0)
+        {
+          if (close(myDirectClient->fd) != 0)
+            rtLog_Warn("Failed to close private client socket: %s", rtStrError(errno));
+          myDirectClient->fd = -1;
+        }
         break;
       }
     }
